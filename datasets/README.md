@@ -1,0 +1,1 @@
+Datasets fetched from [MedMNIST](https://medmnist.com/) and [MIMeta](https://www.l2l-challenge.org/data.html) will be stored in this directory if the `download` argument is set to `True`. Contents of the subfolders `medmnist` and `mimeta` are ignored by git.
