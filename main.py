@@ -1,11 +1,15 @@
-import utils.setup as setup
 import argparse
-from torchvision import models
+
+import utils.setup as setup
 from utils.enums import DatasetEnum
+from utils.enums import MedMNISTCategory
+from utils.augmentations import AugmentationSequenceType
+
+from torchvision import models
 import torchvision.models as models
 
 from ssl.simclr.train import train as simclr_train
-from utils.enums import MedMNISTCategory
+
 
 model_names = models.list_models()
 
@@ -31,7 +35,7 @@ parser.add_argument(  # datasets can be MedMNIST or MIMeta
 
 parser.add_argument(
     "--data_flag",
-    default="pathmnist",
+    default=MedMNISTCategory.PATH,
     type=MedMNISTCategory,
     choices=list(MedMNISTCategory),
     help="data flag for MedMNIST dataset",
@@ -72,6 +76,14 @@ parser.add_argument(
     help="mini-batch size (default: 256), this is the total "
     "batch size of all GPUs on the current node when "
     "using Data Parallel or Distributed Data Parallel",
+)
+parser.add_argument(
+    "-aug",
+    "--augmentation",
+    default=AugmentationSequenceType.DEFAULT,
+    type=AugmentationSequenceType,
+    help="Augmentation sequence to use. Check utils.augmentations for details.",
+    choices=list(AugmentationSequenceType),
 )
 parser.add_argument(
     "--lr",

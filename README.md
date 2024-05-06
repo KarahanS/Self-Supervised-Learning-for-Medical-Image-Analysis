@@ -14,4 +14,4 @@ Self-Supervised Learning for Medical Image Analysis
 
 ## Installation
 
-1. We have used Python 3.10 to obtain our results. Although the requirements should work with higher (and some lower) Python versions, you may want to ensure working Python 3.10 environment for reproducability.
+1. We have used Python 3.10 to obtain our results. Although the requirements should work with higher (and some lower) Python versions, you may want to ensure working Python 3.10 environment for reproducibility.

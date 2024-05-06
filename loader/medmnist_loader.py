@@ -7,16 +7,35 @@ import torch.utils.data as data
 import torchvision.transforms as transforms
 from utils.constants import MEDMNIST_DATA_DIR
 
+from utils.augmentations import augmentation_sequence_map
+
 ## TODO: Test data will be used for the downstream task evaluation.
 ## Use training and validation data for self-supervised learning.
 
 
 class MedMNISTLoader:
-    def __init__(self, data_flag, download, batch_size, size=28, views=2):
+    def __init__(
+        self, augmentation_seq, data_flag, download, batch_size, size=28, views=2
+    ):
+        """
+        Loader for MedMNIST dataset
+
+        Args:
+            augmentation_seq: Augmentation sequence to use.
+            data_flag: Data flag for MedMNIST dataset
+            download: Whether to download the dataset if not present
+            batch_size: Mini-batch size
+            size: Image size
+            views: Number of views for contrastive learning training
+
+        """
         self.info = INFO[data_flag.__str__()]
         DataClass = getattr(medmnist, self.info["python_class"])
 
-        # TODO: self.transforms
+        try:
+            self.transforms = augmentation_sequence_map[augmentation_seq]
+        except KeyError:
+            raise ValueError("Augmentation flag is invalid")
 
         try:
             self.train_data = DataClass(

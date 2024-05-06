@@ -65,6 +65,7 @@ def train(*args, **kwargs):
     if kwargs["dataset_name"] == DatasetEnum.MEDMNIST:
         loader = MedMNISTLoader(
             data_flag=kwargs["data_flag"],
+            augmentation_seq=kwargs["augmentation"],
             download=True,
             batch_size=kwargs["batch_size"],
             size=kwargs["size"],
