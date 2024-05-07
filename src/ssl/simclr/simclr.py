@@ -75,14 +75,17 @@ class SimCLR(pl.LightningModule):
         InfoNCE Loss is implemented.
         """
         ## TODO: Print the sizes to make sure they are correct
-        print(batch.shape)
-        print(x.shape)
         x, _ = batch
         x = torch.cat(x, dim=0)
+        # print(len(batch))
+
+        # len(batch) = 2
+        # print(x.shape)
 
         # Apply base encoder and projection head to images to get embedded
         # encoders
         z = self.forward(x)
+
         # Calculate cosine similarity
         cos_sim = F.cosine_similarity(z[:, None, :], z[None, :, :], dim=-1)
         # Mask out cosine similarity to itself
@@ -90,7 +93,6 @@ class SimCLR(pl.LightningModule):
         cos_sim.masked_fill_(self_mask, -9e15)
         # Find positive example
         pos_mask = self_mask.roll(shifts=cos_sim.shape[0] // 2, dims=0)
-
         cos_sim /= self.hparams.temperature
 
         # InfoNCE loss
@@ -139,3 +141,6 @@ class Projector(nn.Module):
             nn.ReLU(inplace=True),
             nn.Linear(hidden_dim, output_dim),
         )
+
+    def forward(self, x):
+        return self.projector(x)

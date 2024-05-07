@@ -5,9 +5,8 @@ from medmnist import INFO, Evaluator
 
 import torch.utils.data as data
 import torchvision.transforms as transforms
-from utils.constants import MEDMNIST_DATA_DIR
-
-from utils.augmentations import augmentation_sequence_map
+from src.utils.constants import MEDMNIST_DATA_DIR
+from src.utils.augmentations import augmentation_sequence_map
 
 ## TODO: Test data will be used for the downstream task evaluation.
 ## Use training and validation data for self-supervised learning.
@@ -15,7 +14,14 @@ from utils.augmentations import augmentation_sequence_map
 
 class MedMNISTLoader:
     def __init__(
-        self, augmentation_seq, data_flag, download, batch_size, size=28, views=2
+        self,
+        augmentation_seq,
+        data_flag,
+        download,
+        batch_size,
+        num_workers,
+        size=28,
+        views=2,
     ):
         """
         Loader for MedMNIST dataset
@@ -59,13 +65,22 @@ class MedMNISTLoader:
             )
             return
         self.train_loader = data.DataLoader(
-            dataset=self.train_data, batch_size=batch_size, shuffle=True
+            dataset=self.train_data,
+            batch_size=batch_size,
+            shuffle=True,
+            num_workers=num_workers,
         )
         self.train_loader_at_eval = data.DataLoader(
-            dataset=self.train_data, batch_size=2 * batch_size, shuffle=False
+            dataset=self.train_data,
+            batch_size=2 * batch_size,
+            shuffle=False,
+            num_workers=num_workers,
         )
         self.test_loader = data.DataLoader(
-            dataset=self.test_data, batch_size=2 * batch_size, shuffle=False
+            dataset=self.test_data,
+            batch_size=2 * batch_size,
+            shuffle=False,
+            num_workers=num_workers,
         )
 
         print(self.train_data)

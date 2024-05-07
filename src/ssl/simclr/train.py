@@ -1,15 +1,14 @@
 import torch
-from torchvision.models import resnet18
 from pytorch_lightning import Trainer
-from ssl.simclr.simclr import SimCLR
-from loader.medmnist_loader import MedMNISTLoader
-import torchvision.models as models
+from src.ssl.simclr.simclr import SimCLR
+from src.loader.medmnist_loader import MedMNISTLoader
+import src.utils.setup as setup
+import src.utils.constants as const
+from src.utils.enums import DatasetEnum
 
+import torchvision.models as models
 from pytorch_lightning.loggers import WandbLogger
-from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
-import utils.setup as setup
-import utils.constants as const
-from utils.enums import DatasetEnum
+from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint, Timer
 
 
 # args will be a tuple, and kwargs will be a dict.
@@ -22,7 +21,12 @@ def train(*args, **kwargs):
             "Encoder not found among the available torchvision models. Please make sure that you have entered the correct model name."
         )
         ## TODO: Add support for custom models
-    encoder = models.get_model(kwargs["encoder"], pretrained=False)
+    if kwargs[
+        "pretrained"
+    ]:  # TODO: Implement support for pretrained models - weights can be stored as enum
+        encoder = models.get_model(kwargs["encoder"], weights="IMAGENET1K_V2")
+    else:
+        encoder = models.get_model(kwargs["encoder"], pretrained=False)
     feature_size = encoder.fc.in_features
     encoder.fc = (
         torch.nn.Identity()
@@ -34,7 +38,7 @@ def train(*args, **kwargs):
 
     # Define the model
     model = SimCLR(
-        encoder=kwargs["encoder"],
+        encoder=encoder,
         hidden_dim=kwargs["hidden_dim"],
         feature_size=feature_size,
         output_dim=kwargs["output_dim"],
@@ -43,6 +47,9 @@ def train(*args, **kwargs):
     )
 
     accelerator, num_threads = setup.get_accelerator_info()
+
+    # timer
+    timer = Timer(duration="00:72:00:00")
 
     trainer = Trainer(
         default_root_dir=const.SIMCLR_CHECKPOINT_PATH,
@@ -57,6 +64,7 @@ def train(*args, **kwargs):
             ),
             # Auto-logs learning rate
             LearningRateMonitor("epoch"),
+            timer,
         ],
     )
 
@@ -68,6 +76,7 @@ def train(*args, **kwargs):
             download=True,
             batch_size=kwargs["batch_size"],
             size=kwargs["size"],
+            num_workers=kwargs["num_workers"],
         )
         train_loader, validation_loader, _ = loader.get_loaders()
     else:
@@ -83,5 +92,8 @@ def train(*args, **kwargs):
 
     # Save pretrained model
     trainer.save_checkpoint(const.SIMCLR_CHECKPOINT_PATH + f"{kwargs['encoder']}.ckpt")
+    timer.time_elapsed("train")
+    timer.start_time("validate")
+    timer.end_time("test")
 
     return model

@@ -1,14 +1,14 @@
 import argparse
 
-import utils.setup as setup
-from utils.enums import DatasetEnum
-from utils.enums import MedMNISTCategory
-from utils.augmentations import AugmentationSequenceType
+import src.utils.setup as setup
+from src.utils.enums import DatasetEnum
+from src.utils.enums import MedMNISTCategory
+from src.utils.augmentations import AugmentationSequenceType
 
 from torchvision import models
 import torchvision.models as models
 
-from ssl.simclr.train import train as simclr_train
+from src.ssl.simclr.train import train as simclr_train
 
 
 model_names = models.list_models()
@@ -21,6 +21,9 @@ parser.add_argument(
 )
 parser.add_argument(
     "-hd", "--hidden-dim", default=512, type=int, help="hidden dimension"
+)
+parser.add_argument(
+    "-pt", "--pretrained", default=True, action=argparse.BooleanOptionalAction
 )
 parser.add_argument("--output-dim", default=128, type=int, help="output dimension")
 parser.add_argument(  # datasets can be MedMNIST or MIMeta
@@ -57,12 +60,12 @@ parser.add_argument(
     help="model architecture: " + " | ".join(model_names) + " (default: resnet50)",
 )
 parser.add_argument(
-    "-j",
-    "--workers",
-    default=12,
+    "-nw",
+    "--num_workers",
+    default=7,
     type=int,
     metavar="N",
-    help="number of data loading workers (default: 32)",
+    help="number of data loading workers (default: 7)",
 )
 parser.add_argument(
     "--epochs", default=200, type=int, metavar="N", help="number of total epochs to run"
