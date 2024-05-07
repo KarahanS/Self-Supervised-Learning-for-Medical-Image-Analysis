@@ -33,6 +33,7 @@ class MedMNISTLoader:
         DataClass = getattr(medmnist, self.info["python_class"])
 
         try:
+            print(augmentation_seq)
             self.transforms = augmentation_sequence_map[augmentation_seq]
         except KeyError:
             raise ValueError("Augmentation flag is invalid")

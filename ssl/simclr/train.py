@@ -1,12 +1,11 @@
 import torch
 from torchvision.models import resnet18
-import pytorch_lightning as pl
 from pytorch_lightning import Trainer
 from ssl.simclr.simclr import SimCLR
 from loader.medmnist_loader import MedMNISTLoader
 import torchvision.models as models
 
-from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 import utils.setup as setup
 import utils.constants as const
@@ -29,7 +28,7 @@ def train(*args, **kwargs):
         torch.nn.Identity()
     )  # Remove the final fully connected layer and replace it with identity function
 
-    logger = TensorBoardLogger(
+    logger = WandbLogger(
         save_dir=const.SIMCLR_TB_PATH, name=f"{kwargs['encoder']}_simclr"
     )  # TODO: A more sophisticated naming convention might be needed if hyperparameters are changed
 
@@ -45,7 +44,7 @@ def train(*args, **kwargs):
 
     accelerator, num_threads = setup.get_accelerator_info()
 
-    trainer = pl.Trainer(
+    trainer = Trainer(
         default_root_dir=const.SIMCLR_CHECKPOINT_PATH,
         accelerator=accelerator,
         devices=num_threads,

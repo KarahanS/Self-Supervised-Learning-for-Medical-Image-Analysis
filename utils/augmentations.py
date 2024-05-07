@@ -81,7 +81,7 @@ def to_rgb(img):
 
 
 augmentation_sequence_map = {
-    AugmentationSequenceType.NATURAL.value: transforms.Compose(
+    AugmentationSequenceType.NATURAL: transforms.Compose(
         [
             # Normalise to 3 channels
             transforms.Lambda(to_rgb),
@@ -106,7 +106,7 @@ augmentation_sequence_map = {
             transforms.Normalize((0.5,), (0.5,)),
         ]
     ),
-    AugmentationSequenceType.DEFAULT.value: transforms.Compose(
+    AugmentationSequenceType.DEFAULT: transforms.Compose(
         [
             # Normalise to 3 channels
             transforms.Lambda(to_rgb),
@@ -127,7 +127,7 @@ augmentation_sequence_map = {
             transforms.Normalize((0.5,), (0.5,)),
         ]
     ),
-    AugmentationSequenceType.NOVEL.value: transforms.Compose(
+    AugmentationSequenceType.NOVEL: transforms.Compose(
         [
             # Normalise to 3 channels
             transforms.Lambda(to_rgb),
@@ -159,7 +159,7 @@ augmentation_sequence_map = {
             transforms.Normalize((0.5,), (0.5,)),
         ]
     ),
-    AugmentationSequenceType.NOVEL_GREYSCALE.value: transforms.Compose(
+    AugmentationSequenceType.NOVEL_GREYSCALE: transforms.Compose(
         [
             # Normalise to 3 channels
             transforms.Lambda(to_rgb),
