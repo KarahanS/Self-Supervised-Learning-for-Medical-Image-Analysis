@@ -8,6 +8,7 @@ from src.utils.augmentations import AugmentationSequenceType
 from torchvision import models
 import torchvision.models as models
 
+# import your train with the name of the approach
 from src.ssl.simclr.train import train as simclr_train
 
 
@@ -89,7 +90,7 @@ parser.add_argument(
     choices=list(AugmentationSequenceType),
 )
 parser.add_argument(
-    "--lr",
+    "-lr",
     "--learning-rate",
     default=0.0003,
     type=float,
@@ -98,7 +99,7 @@ parser.add_argument(
     dest="lr",
 )
 parser.add_argument(
-    "--wd",
+    "-wd",
     "--weight-decay",
     default=1e-4,
     type=float,
@@ -134,6 +135,12 @@ parser.add_argument(
 )
 parser.add_argument("--gpu-index", default=0, type=int, help="Gpu index.")
 parser.add_argument("--ssl-method", default="simclr", help="SSL method to use.")
+parser.add_argument(
+    "--log",
+    default="wandb",
+    choices=["wandb", "tb", "off"],
+    help="Specify the logging tool to use: 'wandb', 'tensorboard', or 'off' to disable logging. Defaults to Wandb.",
+)
 
 
 def main():

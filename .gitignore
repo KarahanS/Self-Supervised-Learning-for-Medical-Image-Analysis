@@ -161,3 +161,9 @@ cython_debug/
 
 # private
 shortcuts.txt
+
+# wand log files
+src/ssl/simclr/lightning_logs/
+src/ssl/simclr/wandb
+# tensorboard log files
+src/ssl/simclr/tensorboard

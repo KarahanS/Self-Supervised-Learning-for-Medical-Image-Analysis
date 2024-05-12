@@ -1,33 +1,26 @@
 import os
 
-NUM_WORKERS = os.cpu_count()
+# Constants for directories
 OUTPUT_DIR = "output/"
-
-MEDMNIST_DATA_DIR = "datasets/medmnist/"
-MIMETA_DATA_DIR = "datasets/mimeta/"
-
-#########
-# layout
-# - ssl
-#   - simclr
-#     - models
-#       - model_name.ckpt
-#     - tb_logs
-#       - model_name_simclr
-#   - byol
-#     - models
-#
-#########
-
-
-# path to models
-SSL_PATH = "ssl/"
+DATASETS_DIR = "datasets/"
+SRC_DIR = "src/"
+SSL_DIR = "ssl/"
 MODEL_DIR = "models/"
-SIMCLR_CHECKPOINT_PATH = f"src/{SSL_PATH}simclr/{MODEL_DIR}"
-BYOL_CHECKPOINT_PATH = f"src/{SSL_PATH}byol/{MODEL_DIR}"
-DINO_CHECKPOINT_PATH = f"src/{SSL_PATH}dino/{MODEL_DIR}"
+LOG_DIR = "logs/"
 
-# path to tensorboard logs
-SIMCLR_TB_PATH = f"{SIMCLR_CHECKPOINT_PATH}logs/"
-BYOL_TB_PATH = f"{BYOL_CHECKPOINT_PATH}logs/"
-DINO_TB_PATH = f"{DINO_CHECKPOINT_PATH}logs/"
+# Derived constants
+NUM_WORKERS = os.cpu_count()
+
+# Dataset paths
+MEDMNIST_DATA_DIR = os.path.join(DATASETS_DIR, "medmnist/")
+MIMETA_DATA_DIR = os.path.join(DATASETS_DIR, "mimeta/")
+
+# Path to model checkpoints
+SIMCLR_CHECKPOINT_PATH = os.path.join(SRC_DIR, SSL_DIR, "simclr", MODEL_DIR)
+DINO_CHECKPOINT_PATH = os.path.join(SRC_DIR, SSL_DIR, "dino", MODEL_DIR)
+
+# Path to logs (wandb/tb)
+SIMCLR_LOG_PATH = os.path.join(SRC_DIR, SSL_DIR, "simclr")
+
+##########
+## Wandb creates two folders for logging:  lightning_logs and wandb

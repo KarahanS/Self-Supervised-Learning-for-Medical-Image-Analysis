@@ -7,7 +7,7 @@ import src.utils.constants as const
 from src.utils.enums import DatasetEnum
 
 import torchvision.models as models
-from pytorch_lightning.loggers import WandbLogger
+from pytorch_lightning.loggers import WandbLogger, TensorBoardLogger
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint, Timer
 
 
@@ -32,9 +32,18 @@ def train(*args, **kwargs):
         torch.nn.Identity()
     )  # Remove the final fully connected layer and replace it with identity function
 
-    logger = WandbLogger(
-        save_dir=const.SIMCLR_TB_PATH, name=f"{kwargs['encoder']}_simclr"
-    )  # TODO: A more sophisticated naming convention might be needed if hyperparameters are changed
+    if kwargs["log"] == "wandb":
+        logger = WandbLogger(
+            save_dir=const.SIMCLR_LOG_PATH,
+            name=f"{kwargs['encoder']}_simclr_{kwargs['epochs']}_{kwargs['batch_size']}",
+            # name : display name for the run
+        )  # TODO: A more sophisticated naming convention might be needed if hyperparameters are changed
+        print("Logging with WandB...")
+    elif kwargs["log"] == "tb":
+        logger = TensorBoardLogger(save_dir=const.SIMCLR_LOG_PATH, name="tensorboard")
+        print("Logging with TensorBoard...")
+    else:
+        print("Logging turned off.")
 
     # Define the model
     model = SimCLR(
