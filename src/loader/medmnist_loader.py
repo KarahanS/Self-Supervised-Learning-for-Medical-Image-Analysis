@@ -54,7 +54,7 @@ class MedMNISTLoader:
         self.num_classes = len(self.info["label"])
 
     # call with contrastive = True for SSL, call with contrastive = False for downstream tasks
-    def load(self, split, shuffle, contrastive=False):
+    def get_data_and_load(self, split, shuffle, contrastive=False):
         # TODO: Add support for class-balanced loading # https://github.com/j-freddy/simclr-medical-imaging/blob/main/downloader.py#L31
         """
         Creates the dataclass and returns a dataloader according to the split.

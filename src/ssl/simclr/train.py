@@ -70,10 +70,10 @@ def train(*args, **kwargs):
             num_workers=kwargs["num_workers"],
         )
 
-        train_loader = loader.load(
+        train_loader = loader.get_data_and_load(
             split=SplitType.TRAIN, shuffle=True, contrastive=True
         )
-        validation_loader = loader.load(
+        validation_loader = loader.get_data_and_load(
             split=SplitType.VALIDATION, shuffle=False, contrastive=True
         )
     else:
