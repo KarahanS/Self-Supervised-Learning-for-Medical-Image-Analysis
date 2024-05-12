@@ -74,13 +74,9 @@ class SimCLR(pl.LightningModule):
 
         InfoNCE Loss is implemented.
         """
-        ## TODO: Print the sizes to make sure they are correct
+        # len(batch) = 2
         x, _ = batch
         x = torch.cat(x, dim=0)
-        # print(len(batch))
-
-        # len(batch) = 2
-        # print(x.shape)
 
         # Apply base encoder and projection head to images to get embedded
         # encoders

@@ -55,7 +55,7 @@ def train(*args, **kwargs):
         default_root_dir=const.SIMCLR_CHECKPOINT_PATH,
         accelerator=accelerator,
         devices=num_threads,
-        max_epochs=kwargs["max_epochs"],
+        max_epochs=kwargs["epochs"],
         logger=logger,
         callbacks=[
             # Save model as checkpoint periodically under checkpoints folder

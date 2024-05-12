@@ -134,11 +134,11 @@ parser.add_argument(
 )
 parser.add_argument("--gpu-index", default=0, type=int, help="Gpu index.")
 parser.add_argument("--ssl-method", default="simclr", help="SSL method to use.")
-parser.add_argument("--max-epochs", default=100, type=int, help="Number of epochs.")
 
 
 def main():
     args = parser.parse_args()
+    print(args)
     if args.dataset_name == DatasetEnum.MIMETA:
         args.size = 224  # there is no other option for MIMETA dataset
 
