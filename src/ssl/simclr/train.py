@@ -1,4 +1,3 @@
-import torch
 from pytorch_lightning import Trainer
 from src.ssl.simclr.simclr import SimCLR
 from src.loader.medmnist_loader import MedMNISTLoader
@@ -7,7 +6,6 @@ import src.utils.constants as const
 from src.utils.enums import DatasetEnum
 from src.utils.enums import SplitType
 
-import torchvision.models as models
 from pytorch_lightning.loggers import WandbLogger, TensorBoardLogger
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint, Timer
 
@@ -15,24 +13,6 @@ from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint, Ti
 # args will be a tuple, and kwargs will be a dict.
 def train(*args, **kwargs):
     print(kwargs)
-
-    # Define the encoder
-    if kwargs["encoder"] not in models.list_models():
-        raise ValueError(
-            "Encoder not found among the available torchvision models. Please make sure that you have entered the correct model name."
-        )
-        ## TODO: Add support for custom models
-    if kwargs[
-        "pretrained"
-    ]:  # TODO: Implement support for pretrained models - weights can be stored as enum
-        encoder = models.get_model(kwargs["encoder"], weights="IMAGENET1K_V2")
-    else:
-        encoder = models.get_model(kwargs["encoder"], weights=None)
-
-    feature_size = encoder.fc.in_features
-    encoder.fc = (
-        torch.nn.Identity()
-    )  # Remove the final fully connected layer and replace it with identity function
 
     if kwargs["log"] == "wandb":
         logger = WandbLogger(
@@ -49,9 +29,9 @@ def train(*args, **kwargs):
 
     # Define the model
     model = SimCLR(
-        encoder=encoder,
+        encoder=kwargs["encoder"],
+        pretrained=kwargs["pretrained"],
         hidden_dim=kwargs["hidden_dim"],
-        feature_size=feature_size,
         output_dim=kwargs["output_dim"],
         weight_decay=kwargs["weight_decay"],
         lr=kwargs["lr"],
@@ -90,9 +70,11 @@ def train(*args, **kwargs):
             num_workers=kwargs["num_workers"],
         )
 
-        train_loader = loader.load(SplitType.TRAIN, shuffle=True, contrastive=True)
+        train_loader = loader.load(
+            split=SplitType.TRAIN, shuffle=True, contrastive=True
+        )
         validation_loader = loader.load(
-            SplitType.VALIDATION, shuffle=False, contrastive=True
+            split=SplitType.VALIDATION, shuffle=False, contrastive=True
         )
     else:
         raise ValueError(

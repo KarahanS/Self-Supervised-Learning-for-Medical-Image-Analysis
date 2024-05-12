@@ -51,9 +51,11 @@ class MedMNISTLoader:
         self.num_workers = num_workers
         self.size = size
         self.views = views
+        self.num_classes = len(self.info["label"])
 
     # call with contrastive = True for SSL, call with contrastive = False for downstream tasks
     def load(self, split, shuffle, contrastive=False):
+        # TODO: Add support for class-balanced loading # https://github.com/j-freddy/simclr-medical-imaging/blob/main/downloader.py#L31
         """
         Creates the dataclass and returns a dataloader according to the split.
         """
@@ -64,13 +66,7 @@ class MedMNISTLoader:
             else self.transforms
         )
 
-        dataclass = self.DataClass(
-            split=split.value,
-            transform=transform,
-            download=self.download,
-            root=MEDMNIST_DATA_DIR,
-            size=self.size,
-        )
+        dataclass = self.get_data(split, transform)
         print(dataclass)
         print("===================")
         return data.DataLoader(
@@ -80,6 +76,27 @@ class MedMNISTLoader:
             num_workers=self.num_workers,
         )
 
+    # overload
+    def load(self, dataclass, shuffle):
+        return data.DataLoader(
+            dataset=dataclass,
+            batch_size=self.batch_size,
+            shuffle=shuffle,
+            num_workers=self.num_workers,
+        )
+
+    def get_data(self, split, transform=None):
+        if transform is None:
+            transform = self.transforms
+        dataclass = self.DataClass(
+            split=split.value,
+            transform=transform,
+            download=self.download,
+            root=MEDMNIST_DATA_DIR,
+            size=self.size,
+        )
+        return dataclass
+
     def show_info(self):
         print(f"Task: {self.info['task']}")
         print(f"Number of channels: {self.info['n_channels']}")
@@ -88,6 +105,9 @@ class MedMNISTLoader:
 
     def display_data(self):
         self.train_data.montage(length=1).show()
+
+    def get_num_classes(self):
+        return self.num_classes
 
 
 # apply given transformations to the current image n_view times

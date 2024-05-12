@@ -17,7 +17,13 @@ def setup_device(seed):
         print(torch.cuda.get_device_name(0))
         set_seed(seed)
 
-    return device
+
+def get_device():
+    """
+    Get the device (GPU or CPU) based on availability.
+    """
+
+    return torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 # seed for reproducibility
