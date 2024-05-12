@@ -5,6 +5,7 @@ from src.loader.medmnist_loader import MedMNISTLoader
 import src.utils.setup as setup
 import src.utils.constants as const
 from src.utils.enums import DatasetEnum
+from src.utils.enums import SplitType
 
 import torchvision.models as models
 from pytorch_lightning.loggers import WandbLogger, TensorBoardLogger
@@ -26,7 +27,8 @@ def train(*args, **kwargs):
     ]:  # TODO: Implement support for pretrained models - weights can be stored as enum
         encoder = models.get_model(kwargs["encoder"], weights="IMAGENET1K_V2")
     else:
-        encoder = models.get_model(kwargs["encoder"], pretrained=False)
+        encoder = models.get_model(kwargs["encoder"], weights=None)
+
     feature_size = encoder.fc.in_features
     encoder.fc = (
         torch.nn.Identity()
@@ -35,7 +37,7 @@ def train(*args, **kwargs):
     if kwargs["log"] == "wandb":
         logger = WandbLogger(
             save_dir=const.SIMCLR_LOG_PATH,
-            name=f"{kwargs['encoder']}_simclr_{kwargs['epochs']}_{kwargs['batch_size']}",
+            name=f"{kwargs['encoder']}_simclr_{kwargs['epochs']}_{kwargs['batch_size']}_pt={kwargs['pretrained']}_s={kwargs['seed']}",
             # name : display name for the run
         )  # TODO: A more sophisticated naming convention might be needed if hyperparameters are changed
         print("Logging with WandB...")
@@ -87,7 +89,11 @@ def train(*args, **kwargs):
             size=kwargs["size"],
             num_workers=kwargs["num_workers"],
         )
-        train_loader, validation_loader, _ = loader.get_loaders()
+
+        train_loader = loader.load(SplitType.TRAIN, shuffle=True, contrastive=True)
+        validation_loader = loader.load(
+            SplitType.VALIDATION, shuffle=False, contrastive=True
+        )
     else:
         raise ValueError(
             "Dataset not supported yet. Please use MedMNIST."

@@ -23,9 +23,7 @@ parser.add_argument(
 parser.add_argument(
     "-hd", "--hidden-dim", default=512, type=int, help="hidden dimension"
 )
-parser.add_argument(
-    "-pt", "--pretrained", default=True, action=argparse.BooleanOptionalAction
-)
+parser.add_argument("-pt", "--pretrained", action=argparse.BooleanOptionalAction)
 parser.add_argument("--output-dim", default=128, type=int, help="output dimension")
 parser.add_argument(  # datasets can be MedMNIST or MIMeta
     "-dataset_name",

@@ -7,6 +7,7 @@ import torch.utils.data as data
 import torchvision.transforms as transforms
 from src.utils.constants import MEDMNIST_DATA_DIR
 from src.utils.augmentations import augmentation_sequence_map
+from src.utils.enums import SplitType
 
 ## TODO: Test data will be used for the downstream task evaluation.
 ## Use training and validation data for self-supervised learning.
@@ -36,7 +37,7 @@ class MedMNISTLoader:
 
         """
         self.info = INFO[data_flag.__str__()]
-        DataClass = getattr(medmnist, self.info["python_class"])
+        self.DataClass = getattr(medmnist, self.info["python_class"])
 
         try:
             print(augmentation_seq)
@@ -44,51 +45,40 @@ class MedMNISTLoader:
         except KeyError:
             raise ValueError("Augmentation flag is invalid")
 
-        try:
-            self.train_data = DataClass(
-                split="train",
-                transform=ContrastiveTransformations(self.transforms, views),
-                download=download,
-                root=MEDMNIST_DATA_DIR,
-                size=size,
-            )
-            self.test_data = DataClass(
-                split="test",
-                transform=ContrastiveTransformations(self.transforms, views),
-                download=download,
-                root=MEDMNIST_DATA_DIR,
-                size=size,
-            )
-        except:
-            print(
-                f"Download failed. Please make sure that the dataset folder {MEDMNIST_DATA_DIR} exists."
-            )
-            return
-        self.train_loader = data.DataLoader(
-            dataset=self.train_data,
-            batch_size=batch_size,
-            shuffle=True,
-            num_workers=num_workers,
-        )
-        self.train_loader_at_eval = data.DataLoader(
-            dataset=self.train_data,
-            batch_size=2 * batch_size,
-            shuffle=False,
-            num_workers=num_workers,
-        )
-        self.test_loader = data.DataLoader(
-            dataset=self.test_data,
-            batch_size=2 * batch_size,
-            shuffle=False,
-            num_workers=num_workers,
+        self.data_flag = data_flag
+        self.download = download
+        self.batch_size = batch_size
+        self.num_workers = num_workers
+        self.size = size
+        self.views = views
+
+    # call with contrastive = True for SSL, call with contrastive = False for downstream tasks
+    def load(self, split, shuffle, contrastive=False):
+        """
+        Creates the dataclass and returns a dataloader according to the split.
+        """
+
+        transform = (
+            ContrastiveTransformations(self.transforms, self.views)
+            if contrastive
+            else self.transforms
         )
 
-        print(self.train_data)
+        dataclass = self.DataClass(
+            split=split.value,
+            transform=transform,
+            download=self.download,
+            root=MEDMNIST_DATA_DIR,
+            size=self.size,
+        )
+        print(dataclass)
         print("===================")
-        print(self.test_data)
-
-    def get_loaders(self):
-        return self.train_loader, self.train_loader_at_eval, self.test_loader
+        return data.DataLoader(
+            dataset=dataclass,
+            batch_size=self.batch_size,
+            shuffle=shuffle,
+            num_workers=self.num_workers,
+        )
 
     def show_info(self):
         print(f"Task: {self.info['task']}")

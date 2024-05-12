@@ -33,8 +33,8 @@ class SimCLR(pl.LightningModule):
         """
         super(SimCLR, self).__init__()
         # save constructor parameters to self.hparams
-        self.save_hyperparameters()
-        self.encoder = self.hparams.encoder
+        self.save_hyperparameters(ignore=["encoder"])
+        self.encoder = encoder
         # Define your projection head
         self.projector = Projector(
             input_dim=self.hparams.feature_size,
