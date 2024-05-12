@@ -10,8 +10,8 @@ import src.utils.constants as const
 from src.utils.enums import DatasetEnum
 from src.utils.enums import SplitType
 from src.downstream.linear_eval.lr import LogisticRegression
+from src.ssl.simclr.simclr import SimCLR
 
-import os
 import pytorch_lightning as pl
 
 from src.utils.eval import get_auroc_metric, get_representations
@@ -43,7 +43,11 @@ def train(*args, **kwargs):
 
     model_name = f"downstream-linear-eval_{kwargs['encoder']}_{kwargs['data_flag']}"
 
-    pretrained_model = pl.LightningModule.load_from_checkpoint(
+    if kwargs["ssl_method"] == "simclr":
+        LightningModel = SimCLR
+    else:
+        raise ValueError("Other SSL methods are not supported yet.")
+    pretrained_model = LightningModel.load_from_checkpoint(
         kwargs["pretrained_path"], strict=False
     )
 
@@ -63,7 +67,7 @@ def train(*args, **kwargs):
         feature_dim=kwargs["out_dim"],
         num_classes=loader.get_num_classes(),
         lr=kwargs["lr"],
-        weight_decay=kwargs["wd"],
+        weight_decay=kwargs["weight_decay"],
         max_epochs=kwargs["epochs"],
     )
     print("Logistic regression model created")

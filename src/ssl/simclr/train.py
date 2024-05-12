@@ -8,6 +8,8 @@ from src.utils.enums import SplitType
 
 from pytorch_lightning.loggers import WandbLogger, TensorBoardLogger
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint, Timer
+import torch
+import torchvision.models as models
 
 
 # args will be a tuple, and kwargs will be a dict.
@@ -27,9 +29,28 @@ def train(*args, **kwargs):
     else:
         print("Logging turned off.")
 
+        # Define the encoder
+        if encoder not in models.list_models():
+            raise ValueError(
+                "Encoder not found among the available torchvision models. Please make sure that you have entered the correct model name."
+            )
+            ## TODO: Add support for custom models
+        if kwargs[
+            "pretrained"
+        ]:  # TODO: Implement support for pretrained models - weights can be stored as enum
+            encoder = models.get_model(encoder, weights="IMAGENET1K_V2")
+        else:
+            encoder = models.get_model(encoder, weights=None)
+
+    feature_size = encoder.fc.in_features
+    encoder.fc = (
+        torch.nn.Identity()
+    )  # Replace the fully connected layer with identity function
+
     # Define the model
     model = SimCLR(
-        encoder=kwargs["encoder"],
+        encoder=encoder,
+        feature_size=feature_size,
         pretrained=kwargs["pretrained"],
         hidden_dim=kwargs["hidden_dim"],
         output_dim=kwargs["output_dim"],

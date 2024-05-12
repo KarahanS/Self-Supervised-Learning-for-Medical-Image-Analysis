@@ -5,7 +5,7 @@ OUTPUT_DIR = "output/"
 DATASETS_DIR = "datasets/"
 SRC_DIR = "src/"
 SSL_DIR = "ssl/"
-MODEL_DIR = "models/"
+MODEL_DIR = "ckpts/"
 LOG_DIR = "logs/"
 DOWNSTREAM_DIR = "downstream/"
 
@@ -28,5 +28,5 @@ LOGISTIC_REGRESSION_LOG_PATH = os.path.join(SRC_DIR, DOWNSTREAM_DIR, "linear_eva
 
 # downstream
 LOGISTIC_REGRESSION_CHECKPOINT_PATH = os.path.join(
-    SRC_DIR, DOWNSTREAM_DIR, "linear_eval"
+    SRC_DIR, DOWNSTREAM_DIR, "linear_eval", MODEL_DIR
 )

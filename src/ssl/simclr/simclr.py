@@ -6,7 +6,6 @@ import torch.nn as nn
 import torch.optim as optim
 import pytorch_lightning as pl
 import torch.nn.functional as F
-import torchvision.models as models
 
 
 # https://pytorch-lightning.readthedocs.io/en/0.7.6/lightning-module.html
@@ -14,8 +13,8 @@ class SimCLR(pl.LightningModule):
     def __init__(
         self,
         encoder,
-        pretrained,
         hidden_dim,
+        feature_size,
         output_dim,
         weight_decay,
         lr,
@@ -35,30 +34,12 @@ class SimCLR(pl.LightningModule):
         """
         super(SimCLR, self).__init__()
         # save constructor parameters to self.hparams
-        self.save_hyperparameters()
-
-        # Define the encoder
-        if encoder not in models.list_models():
-            raise ValueError(
-                "Encoder not found among the available torchvision models. Please make sure that you have entered the correct model name."
-            )
-            ## TODO: Add support for custom models
-        if (
-            pretrained
-        ):  # TODO: Implement support for pretrained models - weights can be stored as enum
-            encoder = models.get_model(encoder, weights="IMAGENET1K_V2")
-        else:
-            encoder = models.get_model(encoder, weights=None)
-
-        feature_size = encoder.fc.in_features
-        encoder.fc = (
-            torch.nn.Identity()
-        )  # Replace the fully connected layer with identity function
+        self.save_hyperparameters(ignore=["encoder"])
 
         self.encoder = encoder  # base encoder without projection head
         # Define your projection head
         self.projector = Projector(
-            input_dim=feature_size,
+            input_dim=self.hparams.feature_size,
             hidden_dim=self.hparams.hidden_dim,
             output_dim=self.hparams.output_dim,
         )
