@@ -5,7 +5,6 @@ from PIL import Image, ImageEnhance, ImageOps
 
 # https://github.com/j-freddy/simclr-medical-imaging
 
-
 ## TODO: Some of the transformations are applied on 28x28 images. Modify them to have a more general approach.
 
 
@@ -74,6 +73,7 @@ class AugmentationSequenceType(Enum):
     DEFAULT = "default"
     NOVEL = "novel"
     NOVEL_GREYSCALE = "greyscale"
+    PREPROCESS = "preprocess"  # simple preprocessing augmentations for downstream tasks
 
 
 def to_rgb(img):
@@ -176,5 +176,8 @@ augmentation_sequence_map = {
             transforms.ToTensor(),
             transforms.Normalize((0.5,), (0.5,)),
         ]
+    ),
+    AugmentationSequenceType.PREPROCESS: transforms.Compose(
+        [transforms.ToTensor(), transforms.Normalize(mean=[0.5], std=[0.5])]
     ),
 }

@@ -1,33 +1,32 @@
 import os
 
-NUM_WORKERS = os.cpu_count()
+# Constants for directories
 OUTPUT_DIR = "output/"
+DATASETS_DIR = "datasets/"
+SRC_DIR = "src/"
+SSL_DIR = "ssl/"
+MODEL_DIR = "ckpts/"
+LOG_DIR = "logs/"
+DOWNSTREAM_DIR = "downstream/"
 
-MEDMNIST_DATA_DIR = "datasets/medmnist/"
-MIMETA_DATA_DIR = "datasets/mimeta/"
+# Derived constants
+NUM_WORKERS = os.cpu_count()
 
-#########
-# layout
-# - ssl
-#   - simclr
-#     - models
-#       - model_name.ckpt
-#     - tb_logs
-#       - model_name_simclr
-#   - byol
-#     - models
-#
-#########
+# Dataset paths
+MEDMNIST_DATA_DIR = os.path.join(DATASETS_DIR, "medmnist/")
+MIMETA_DATA_DIR = os.path.join(DATASETS_DIR, "mimeta/")
 
+# Path to model checkpoints
+SIMCLR_CHECKPOINT_PATH = os.path.join(SRC_DIR, SSL_DIR, "simclr", MODEL_DIR)
+DINO_CHECKPOINT_PATH = os.path.join(SRC_DIR, SSL_DIR, "dino", MODEL_DIR)
 
-# path to models
-SSL_PATH = "ssl/"
-MODEL_DIR = "models/"
-SIMCLR_CHECKPOINT_PATH = f"{SSL_PATH}simclr/{MODEL_DIR}"
-BYOL_CHECKPOINT_PATH = f"{SSL_PATH}byol/{MODEL_DIR}"
-DINO_CHECKPOINT_PATH = f"{SSL_PATH}dino/{MODEL_DIR}"
+# Path to logs (wandb/tb)
+SIMCLR_LOG_PATH = os.path.join(SRC_DIR, SSL_DIR, "simclr")
 
-# path to tensorboard logs
-SIMCLR_TB_PATH = f"{SIMCLR_CHECKPOINT_PATH}tb_logs/"
-BYOL_TB_PATH = f"{BYOL_CHECKPOINT_PATH}tb_logs/"
-DINO_TB_PATH = f"{DINO_CHECKPOINT_PATH}tb_logs/"
+# Path to logs (wandb/tb) for downstream
+LOGISTIC_REGRESSION_LOG_PATH = os.path.join(SRC_DIR, DOWNSTREAM_DIR, "linear_eval")
+
+# downstream
+LOGISTIC_REGRESSION_CHECKPOINT_PATH = os.path.join(
+    SRC_DIR, DOWNSTREAM_DIR, "linear_eval", MODEL_DIR
+)

@@ -8,8 +8,9 @@ from src.utils.augmentations import AugmentationSequenceType
 from torchvision import models
 import torchvision.models as models
 
+# import your train with the name of the approach
 from src.ssl.simclr.train import train as simclr_train
-
+from src.downstream.linear_eval.train import train as lr_train
 
 model_names = models.list_models()
 
@@ -23,7 +24,10 @@ parser.add_argument(
     "-hd", "--hidden-dim", default=512, type=int, help="hidden dimension"
 )
 parser.add_argument(
-    "-pt", "--pretrained", default=True, action=argparse.BooleanOptionalAction
+    "-pt",
+    "--pretrained",
+    action=argparse.BooleanOptionalAction,
+    help="Use a supervised-pretrained model for further self-supervised pretraining, or pre-train a new model from scratch.",
 )
 parser.add_argument("--output-dim", default=128, type=int, help="output dimension")
 parser.add_argument(  # datasets can be MedMNIST or MIMeta
@@ -37,7 +41,7 @@ parser.add_argument(  # datasets can be MedMNIST or MIMeta
 )
 
 parser.add_argument(
-    "--data_flag",
+    "--data-flag",
     default=MedMNISTCategory.PATH,
     type=MedMNISTCategory,
     choices=list(MedMNISTCategory),
@@ -83,13 +87,13 @@ parser.add_argument(
 parser.add_argument(
     "-aug",
     "--augmentation",
-    default=AugmentationSequenceType.DEFAULT,
+    # default=AugmentationSequenceType.DEFAULT,
     type=AugmentationSequenceType,
-    help="Augmentation sequence to use. Check utils.augmentations for details.",
+    help="Augmentation sequence to use. Check utils.augmentations for details. Use 'preprocess' for downstream tasks.",
     choices=list(AugmentationSequenceType),
 )
 parser.add_argument(
-    "--lr",
+    "-lr",
     "--learning-rate",
     default=0.0003,
     type=float,
@@ -98,7 +102,7 @@ parser.add_argument(
     dest="lr",
 )
 parser.add_argument(
-    "--wd",
+    "-wd",
     "--weight-decay",
     default=1e-4,
     type=float,
@@ -134,11 +138,48 @@ parser.add_argument(
 )
 parser.add_argument("--gpu-index", default=0, type=int, help="Gpu index.")
 parser.add_argument("--ssl-method", default="simclr", help="SSL method to use.")
-parser.add_argument("--max-epochs", default=100, type=int, help="Number of epochs.")
+parser.add_argument(
+    "--log",
+    default="wandb",
+    choices=["wandb", "tb", "off"],
+    help="Specify the logging tool to use: 'wandb', 'tensorboard', or 'off' to disable logging. Defaults to Wandb.",
+)
+parser.add_argument(
+    "--action",
+    default="pretrain",
+    choices=["pretrain", "downstream"],
+    help="Use 'pretrain' for self-supervised pretraining and 'downstream' for running a trained model on a downstream task",
+)
+parser.add_argument(
+    "--eval-method",
+    default="linear",
+    choices=["linear", "nonlinear", "semi-supervised", "transfer-learning"],
+    help="Use which evaluation method to use to measure the quality of the learned representations.",
+)
+parser.add_argument(
+    "--pretrained-path",
+    default=None,
+    help="Path to the pretrained model to use for downstream tasks.",
+)
+
+
+def set_augmentation(args):
+    """
+    If augmentation is not specified, set the default augmentation sequence to "default" for self-supervised learning.
+    For downstream tasks, set the augmentation sequence to "preprocess".
+    """
+    augmentation_seq = args.augmentation
+    if args.action == "pretrain":
+        if augmentation_seq is None:
+            args.augmentation = AugmentationSequenceType.DEFAULT
+    else:
+        args.augmentation = AugmentationSequenceType.PREPROCESS
 
 
 def main():
     args = parser.parse_args()
+    set_augmentation(args)
+    print(args)
     if args.dataset_name == DatasetEnum.MIMETA:
         args.size = 224  # there is no other option for MIMETA dataset
 
@@ -146,13 +187,20 @@ def main():
         args.n_views == 2
     ), "Only two view training is supported. Please use --n-views 2."
     # check if gpu training is available
-    device = setup.setup_device(args.seed)
+    setup.setup_device(args.seed)
 
-    # Dataset should be read in the train.py of related SSL method
-    if args.ssl_method == "simclr":
-        simclr_train(**vars(args))
+    # main can be used either for self-supervised pretraining or downstream task evaluation
+    if args.action == "pretrain":
+        # Dataset should be read in the train.py of related SSL method
+        if args.ssl_method == "simclr":
+            simclr_train(**vars(args))
+        else:
+            raise ValueError("Other SSL methods are not supported yet.")
     else:
-        raise ValueError("Other SSL methods are not supported yet.")
+        if args.eval_method == "linear":
+            lr_train(**vars(args))  # logistic regression
+        else:
+            raise ValueError("Other evaluation methods are not supported yet.")
 
 
 if __name__ == "__main__":

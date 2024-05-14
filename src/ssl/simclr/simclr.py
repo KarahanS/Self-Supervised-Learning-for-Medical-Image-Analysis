@@ -8,6 +8,7 @@ import pytorch_lightning as pl
 import torch.nn.functional as F
 
 
+# https://pytorch-lightning.readthedocs.io/en/0.7.6/lightning-module.html
 class SimCLR(pl.LightningModule):
     def __init__(
         self,
@@ -33,8 +34,9 @@ class SimCLR(pl.LightningModule):
         """
         super(SimCLR, self).__init__()
         # save constructor parameters to self.hparams
-        self.save_hyperparameters()
-        self.encoder = self.hparams.encoder
+        self.save_hyperparameters(ignore=["encoder"])
+
+        self.encoder = encoder  # base encoder without projection head
         # Define your projection head
         self.projector = Projector(
             input_dim=self.hparams.feature_size,
@@ -74,13 +76,9 @@ class SimCLR(pl.LightningModule):
 
         InfoNCE Loss is implemented.
         """
-        ## TODO: Print the sizes to make sure they are correct
+        # len(batch) = 2
         x, _ = batch
         x = torch.cat(x, dim=0)
-        # print(len(batch))
-
-        # len(batch) = 2
-        # print(x.shape)
 
         # Apply base encoder and projection head to images to get embedded
         # encoders

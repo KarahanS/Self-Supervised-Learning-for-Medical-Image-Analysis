@@ -29,3 +29,12 @@ class MedMNISTCategory(Enum):
 
     def __str__(self):
         return self.value
+
+
+class SplitType(Enum):
+    TRAIN = "train"
+    VALIDATION = "val"
+    TEST = "test"
+
+    def __str__(self):
+        return self.value

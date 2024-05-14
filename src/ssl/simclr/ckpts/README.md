@@ -1,0 +1,1 @@
+All the Wandb/tensorboard log files and the best model checkpoints will be stored here. When a downstream task is run with `simclr` approach, it automatically checks this folder to use the checkpoints.
