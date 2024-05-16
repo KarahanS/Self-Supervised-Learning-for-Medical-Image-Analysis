@@ -3,10 +3,6 @@ from torchvision import transforms
 import numpy as np
 from PIL import Image, ImageEnhance, ImageOps
 
-# https://github.com/j-freddy/simclr-medical-imaging
-
-## TODO: Some of the transformations are applied on 28x28 images. Modify them to have a more general approach.
-
 
 class RandomAdjustSharpness:
     def __init__(self, factor_low, factor_high):

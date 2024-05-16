@@ -27,6 +27,7 @@ def train(*args, **kwargs):
         logger = TensorBoardLogger(save_dir=const.SIMCLR_LOG_PATH, name="tensorboard")
         print("Logging with TensorBoard...")
     else:
+        logger = None
         print("Logging turned off.")
 
     # Define the encoder
@@ -50,6 +51,7 @@ def train(*args, **kwargs):
     # Define the model
     model = SimCLR(
         encoder=encoder,
+        n_views=kwargs["n_views"],
         feature_size=feature_size,
         hidden_dim=kwargs["hidden_dim"],
         output_dim=kwargs["output_dim"],

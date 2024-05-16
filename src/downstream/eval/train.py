@@ -97,8 +97,6 @@ def train(*args, **kwargs):
         )
         modelclass = MultiLayerPerceptron
 
-    print("Logistic regression model created")
-
     if kwargs["log"] == "wandb":
         logger = WandbLogger(
             save_dir=const.DOWNSTREAM_LOG_PATH,

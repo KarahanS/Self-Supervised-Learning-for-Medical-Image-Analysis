@@ -20,7 +20,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument(
     "-data", metavar="DIR", default="./datasets", help="path to dataset"
 )
-# hidden dimension argument can be used for either projection head (pretraining) or MLP (downstream)
+# hidden dimension can be used for either projection head (pretraining) or MLP (downstream)
 parser.add_argument(
     "-hd", "--hidden-dim", default=512, type=int, help="hidden dimension"
 )
