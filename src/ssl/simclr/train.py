@@ -19,7 +19,7 @@ def train(*args, **kwargs):
     if kwargs["log"] == "wandb":
         logger = WandbLogger(
             save_dir=const.SIMCLR_LOG_PATH,
-            name=f"{kwargs['encoder']}_simclr_{kwargs['epochs']}_{kwargs['batch_size']}_pt={kwargs['pretrained']}_s={kwargs['seed']}",
+            name=f"{kwargs['encoder']}_simclr_{kwargs['epochs']}_{kwargs['batch_size']}_pt={kwargs['pretrained']}_s={kwargs['seed']}_img={kwargs['size']}",
             # name : display name for the run
         )  # TODO: A more sophisticated naming convention might be needed if hyperparameters are changed
         print("Logging with WandB...")

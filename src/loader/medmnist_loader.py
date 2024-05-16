@@ -6,7 +6,7 @@ from medmnist import INFO, Evaluator
 import torch.utils.data as data
 import torchvision.transforms as transforms
 from src.utils.constants import MEDMNIST_DATA_DIR
-from src.utils.augmentations import augmentation_sequence_map
+from src.utils.augmentations import get_augmentation_sequence
 from src.utils.enums import SplitType
 
 ## TODO: Test data will be used for the downstream task evaluation.
@@ -37,11 +37,12 @@ class MedMNISTLoader:
 
         """
         self.info = INFO[data_flag.__str__()]
-        self.DataClass = getattr(medmnist, self.info["python_class"])
+        self.DataClass = getattr(medmnist, self.info["python_class"], size)
 
         try:
+            # augmentation_seq = AugmentationSequenceType(augmentation_seq)
             print(augmentation_seq)
-            self.transforms = augmentation_sequence_map[augmentation_seq]
+            self.transforms = get_augmentation_sequence(size, augmentation_seq)
         except KeyError:
             raise ValueError("Augmentation flag is invalid")
 

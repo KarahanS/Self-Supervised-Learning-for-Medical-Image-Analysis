@@ -78,7 +78,7 @@ class SimCLR(pl.LightningModule):
         """
         # len(batch) = 2
         x, _ = batch
-        x = torch.cat(x, dim=0)
+        x = torch.cat(x, dim=0)  # x[0].shape = (3, 28, 28)   (list of images)
 
         # Apply base encoder and projection head to images to get embedded
         # encoders
