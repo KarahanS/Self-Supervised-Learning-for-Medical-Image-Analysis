@@ -24,9 +24,7 @@ DINO_CHECKPOINT_PATH = os.path.join(SRC_DIR, SSL_DIR, "dino", MODEL_DIR)
 SIMCLR_LOG_PATH = os.path.join(SRC_DIR, SSL_DIR, "simclr")
 
 # Path to logs (wandb/tb) for downstream
-LOGISTIC_REGRESSION_LOG_PATH = os.path.join(SRC_DIR, DOWNSTREAM_DIR, "linear_eval")
+DOWNSTREAM_LOG_PATH = os.path.join(SRC_DIR, DOWNSTREAM_DIR, "eval")
 
 # downstream
-LOGISTIC_REGRESSION_CHECKPOINT_PATH = os.path.join(
-    SRC_DIR, DOWNSTREAM_DIR, "linear_eval", MODEL_DIR
-)
+DOWNSTREAM_CHECKPOINT_PATH = os.path.join(SRC_DIR, DOWNSTREAM_DIR, "eval", MODEL_DIR)

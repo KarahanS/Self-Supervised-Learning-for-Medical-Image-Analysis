@@ -9,12 +9,24 @@ from src.utils.setup import get_device
 import src.utils.constants as const
 from src.utils.enums import DatasetEnum
 from src.utils.enums import SplitType
-from src.downstream.linear_eval.lr import LogisticRegression
+from src.downstream.eval.lr import LogisticRegression
+from src.downstream.eval.mlp import MultiLayerPerceptron
+
 from src.ssl.simclr.simclr import SimCLR
-
 import pytorch_lightning as pl
-
 from src.utils.eval import get_auroc_metric, get_representations
+
+import os
+
+
+# helper to save model without overwriting previous runs
+def save_without_overwrite(path):
+    inc = 0
+    while os.path.exists(path):
+        # update ckpt name
+        inc += 1
+        path = path + f"_{inc}"
+    return path
 
 
 def train(*args, **kwargs):
@@ -41,9 +53,11 @@ def train(*args, **kwargs):
             "Dataset not supported yet. Please use MedMNIST."
         )  # TODO: Implement support for MIMeta
 
-    model_name = f"downstream-linear-eval_{kwargs['encoder']}_{kwargs['data_flag']}"
+    model_name = f"{kwargs['eval_method']}_{kwargs['encoder']}_{kwargs['data_flag']}"
 
-    if kwargs["ssl_method"] == "simclr":
+    if (
+        kwargs["ssl_method"] == "simclr"
+    ):  # TODO: Take the model from a dictionary rather than if-else
         LightningModel = SimCLR
     else:
         raise ValueError("Other SSL methods are not supported yet.")
@@ -63,25 +77,38 @@ def train(*args, **kwargs):
 
     _, d = train_feats.tensors[0].shape
 
-    model = LogisticRegression(
-        feature_dim=kwargs["out_dim"],
-        num_classes=loader.get_num_classes(),
-        lr=kwargs["lr"],
-        weight_decay=kwargs["weight_decay"],
-        max_epochs=kwargs["epochs"],
-    )
+    if kwargs["eval_method"] == "linear":
+        model = LogisticRegression(
+            feature_dim=d,
+            num_classes=loader.get_num_classes(),
+            lr=kwargs["lr"],
+            weight_decay=kwargs["weight_decay"],
+            max_epochs=kwargs["epochs"],
+        )
+        modelclass = LogisticRegression
+    elif kwargs["eval_method"] == "nonlinear":
+        model = MultiLayerPerceptron(
+            feature_dim=d,
+            hidden_dim=kwargs["hidden_dim"],
+            num_classes=loader.get_num_classes(),
+            lr=kwargs["lr"],
+            weight_decay=kwargs["weight_decay"],
+            max_epochs=kwargs["epochs"],
+        )
+        modelclass = MultiLayerPerceptron
+
     print("Logistic regression model created")
 
     if kwargs["log"] == "wandb":
         logger = WandbLogger(
-            save_dir=const.LOGISTIC_REGRESSION_LOG_PATH,
-            name=f"{kwargs['encoder']}_{kwargs['ssl_method']}_{kwargs['batch_size']}_s={kwargs['seed']}",
+            save_dir=const.DOWNSTREAM_LOG_PATH,
+            name=f"{model_name}",
             # name: display name for the run
         )
         print("Logging with WandB...")
     elif kwargs["log"] == "tb":
         logger = TensorBoardLogger(
-            save_dir=const.LOGISTIC_REGRESSION_LOG_PATH, name="tensorboard"
+            save_dir=const.DOWNSTREAM_LOG_PATH, name="tensorboard"
         )
         print("Logging with TensorBoard...")
     else:
@@ -91,7 +118,7 @@ def train(*args, **kwargs):
     accelerator, num_threads = setup.get_accelerator_info()
 
     trainer = pl.Trainer(
-        default_root_dir=const.LOGISTIC_REGRESSION_CHECKPOINT_PATH,
+        default_root_dir=const.DOWNSTREAM_CHECKPOINT_PATH,
         accelerator=accelerator,
         devices=num_threads,
         max_epochs=kwargs["epochs"],
@@ -115,14 +142,13 @@ def train(*args, **kwargs):
     trainer.fit(model, train_loader, validation_loader)
 
     # Load best checkpoint after training
-    model = LogisticRegression.load_from_checkpoint(
-        trainer.checkpoint_callback.best_model_path
-    )
+    model = modelclass.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
 
     # Save model
-    trainer.save_checkpoint(
-        const.LOGISTIC_REGRESSION_CHECKPOINT_PATH + f"{model_name}.ckpt"
+    ckpt = save_without_overwrite(
+        const.DOWNSTREAM_CHECKPOINT_PATH + f"{model_name}.ckpt"
     )
+    trainer.save_checkpoint(ckpt)
 
     # Test model
     test_result = trainer.test(model, dataloaders=test_loader, verbose=False)
