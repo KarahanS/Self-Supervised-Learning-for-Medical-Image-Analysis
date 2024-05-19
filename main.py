@@ -10,7 +10,7 @@ import torchvision.models as models
 
 # import your train with the name of the approach
 from src.ssl.simclr.train import train as simclr_train
-from src.downstream.linear_eval.train import train as lr_train
+from src.downstream.eval.train import train as eval_train
 
 model_names = models.list_models()
 
@@ -20,6 +20,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument(
     "-data", metavar="DIR", default="./datasets", help="path to dataset"
 )
+# hidden dimension can be used for either projection head (pretraining) or MLP (downstream)
 parser.add_argument(
     "-hd", "--hidden-dim", default=512, type=int, help="hidden dimension"
 )
@@ -153,7 +154,7 @@ parser.add_argument(
 parser.add_argument(
     "--eval-method",
     default="linear",
-    choices=["linear", "nonlinear", "semi-supervised", "transfer-learning"],
+    choices=["linear", "nonlinear", "semi-supervised"],
     help="Use which evaluation method to use to measure the quality of the learned representations.",
 )
 parser.add_argument(
@@ -197,8 +198,8 @@ def main():
         else:
             raise ValueError("Other SSL methods are not supported yet.")
     else:
-        if args.eval_method == "linear":
-            lr_train(**vars(args))  # logistic regression
+        if args.eval_method in ["linear", "nonlinear"]:
+            eval_train(**vars(args))  # logistic regression or mLP
         else:
             raise ValueError("Other evaluation methods are not supported yet.")
 

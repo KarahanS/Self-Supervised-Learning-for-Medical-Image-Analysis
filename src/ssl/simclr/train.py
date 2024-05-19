@@ -19,7 +19,7 @@ def train(*args, **kwargs):
     if kwargs["log"] == "wandb":
         logger = WandbLogger(
             save_dir=const.SIMCLR_LOG_PATH,
-            name=f"{kwargs['encoder']}_simclr_{kwargs['epochs']}_{kwargs['batch_size']}_pt={kwargs['pretrained']}_s={kwargs['seed']}",
+            name=f"{kwargs['encoder']}_simclr_{kwargs['epochs']}_{kwargs['batch_size']}_pt={kwargs['pretrained']}_s={kwargs['seed']}_img={kwargs['size']}",
             # name : display name for the run
         )  # TODO: A more sophisticated naming convention might be needed if hyperparameters are changed
         print("Logging with WandB...")
@@ -27,6 +27,7 @@ def train(*args, **kwargs):
         logger = TensorBoardLogger(save_dir=const.SIMCLR_LOG_PATH, name="tensorboard")
         print("Logging with TensorBoard...")
     else:
+        logger = None
         print("Logging turned off.")
 
     # Define the encoder
@@ -50,6 +51,7 @@ def train(*args, **kwargs):
     # Define the model
     model = SimCLR(
         encoder=encoder,
+        n_views=kwargs["n_views"],
         feature_size=feature_size,
         hidden_dim=kwargs["hidden_dim"],
         output_dim=kwargs["output_dim"],
@@ -62,21 +64,23 @@ def train(*args, **kwargs):
     # timer
     timer = Timer(duration="00:72:00:00")
 
+    callback = [
+        # Save model as checkpoint periodically under checkpoints folder
+        ModelCheckpoint(save_weights_only=False, mode="max", monitor="val_acc_top5"),
+        # Auto-logs learning rate
+        timer,
+    ]
+
+    if logger is not None:
+        callback.append(LearningRateMonitor("epoch"))
+
     trainer = Trainer(
         default_root_dir=const.SIMCLR_CHECKPOINT_PATH,
         accelerator=accelerator,
         devices=num_threads,
         max_epochs=kwargs["epochs"],
         logger=logger,
-        callbacks=[
-            # Save model as checkpoint periodically under checkpoints folder
-            ModelCheckpoint(
-                save_weights_only=False, mode="max", monitor="val_acc_top5"
-            ),
-            # Auto-logs learning rate
-            LearningRateMonitor("epoch"),
-            timer,
-        ],
+        callbacks=(callback),
     )
 
     # get train loaders
@@ -107,8 +111,12 @@ def train(*args, **kwargs):
     # Load best checkpoint after training
     model = SimCLR.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
 
+    ckpt = (
+        const.SIMCLR_CHECKPOINT_PATH
+        + f"{kwargs['encoder']}_simclr_{kwargs['epochs']}_{kwargs['batch_size']}_pt={kwargs['pretrained']}_s={kwargs['seed']}_img={kwargs['size']}.ckpt"
+    )
     # Save pretrained model
-    trainer.save_checkpoint(const.SIMCLR_CHECKPOINT_PATH + f"{kwargs['encoder']}.ckpt")
+    trainer.save_checkpoint(ckpt)
     timer.time_elapsed("train")
     timer.start_time("validate")
     timer.end_time("test")

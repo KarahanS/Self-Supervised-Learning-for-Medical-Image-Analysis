@@ -169,7 +169,7 @@ src/ssl/simclr/wandb
 src/ssl/simclr/tensorboard
 
 # downstream log files
-src/downstream/linear_eval/lightning_logs/
-src/downstream/linear_eval/tensorboard
-src/downstream/linear_eval/wandb
-src/downstream/linear_eval/ckpts
+src/downstream/eval/lightning_logs/
+src/downstream/eval/tensorboard
+src/downstream/eval/wandb
+src/downstream/eval/ckpts
