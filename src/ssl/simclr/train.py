@@ -64,18 +64,15 @@ def train(*args, **kwargs):
     # timer
     timer = Timer(duration="00:72:00:00")
 
-    callbacks = (
-        [
-            # Save model as checkpoint periodically under checkpoints folder
-            ModelCheckpoint(
-                save_weights_only=False, mode="max", monitor="val_acc_top5"
-            ),
-            # Auto-logs learning rate
-            timer,
-        ],
-    )
+    callback = [
+        # Save model as checkpoint periodically under checkpoints folder
+        ModelCheckpoint(save_weights_only=False, mode="max", monitor="val_acc_top5"),
+        # Auto-logs learning rate
+        timer,
+    ]
+
     if logger is not None:
-        callbacks.append(LearningRateMonitor("epoch"))
+        callback.append(LearningRateMonitor("epoch"))
 
     trainer = Trainer(
         default_root_dir=const.SIMCLR_CHECKPOINT_PATH,
@@ -83,6 +80,7 @@ def train(*args, **kwargs):
         devices=num_threads,
         max_epochs=kwargs["epochs"],
         logger=logger,
+        callbacks=(callback),
     )
 
     # get train loaders
