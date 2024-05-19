@@ -34,7 +34,7 @@ class SimCLR(pl.LightningModule):
         """
         super(SimCLR, self).__init__()
         # save constructor parameters to self.hparams
-        self.save_hyperparameters(ignore=["encoder"])
+        self.save_hyperparameters()
 
         self.encoder = encoder  # base encoder without projection head
         # Define your projection head

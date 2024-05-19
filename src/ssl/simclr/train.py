@@ -64,21 +64,25 @@ def train(*args, **kwargs):
     # timer
     timer = Timer(duration="00:72:00:00")
 
+    callbacks = (
+        [
+            # Save model as checkpoint periodically under checkpoints folder
+            ModelCheckpoint(
+                save_weights_only=False, mode="max", monitor="val_acc_top5"
+            ),
+            # Auto-logs learning rate
+            timer,
+        ],
+    )
+    if logger is not None:
+        callbacks.append(LearningRateMonitor("epoch"))
+
     trainer = Trainer(
         default_root_dir=const.SIMCLR_CHECKPOINT_PATH,
         accelerator=accelerator,
         devices=num_threads,
         max_epochs=kwargs["epochs"],
         logger=logger,
-        callbacks=[
-            # Save model as checkpoint periodically under checkpoints folder
-            ModelCheckpoint(
-                save_weights_only=False, mode="max", monitor="val_acc_top5"
-            ),
-            # Auto-logs learning rate
-            LearningRateMonitor("epoch"),
-            timer,
-        ],
     )
 
     # get train loaders
@@ -109,8 +113,12 @@ def train(*args, **kwargs):
     # Load best checkpoint after training
     model = SimCLR.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
 
+    ckpt = (
+        const.SIMCLR_CHECKPOINT_PATH
+        + f"{kwargs['encoder']}_simclr_{kwargs['epochs']}_{kwargs['batch_size']}_pt={kwargs['pretrained']}_s={kwargs['seed']}_img={kwargs['size']}.ckpt"
+    )
     # Save pretrained model
-    trainer.save_checkpoint(const.SIMCLR_CHECKPOINT_PATH + f"{kwargs['encoder']}.ckpt")
+    trainer.save_checkpoint(ckpt)
     timer.time_elapsed("train")
     timer.start_time("validate")
     timer.end_time("test")
