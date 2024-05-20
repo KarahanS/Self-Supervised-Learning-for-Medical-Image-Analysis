@@ -169,9 +169,8 @@ def set_augmentation(args):
     If augmentation is not specified, set the default augmentation sequence to "default" for self-supervised learning.
     For downstream tasks, set the augmentation sequence to "preprocess".
     """
-    augmentation_seq = args.augmentation
     if args.action == "pretrain":
-        if augmentation_seq is None:
+        if not args.augmentation:
             args.augmentation = AugmentationSequenceType.DEFAULT
     else:
         args.augmentation = AugmentationSequenceType.PREPROCESS

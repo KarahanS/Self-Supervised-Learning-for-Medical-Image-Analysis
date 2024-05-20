@@ -31,4 +31,10 @@ pip install -r requirements.txt
 ```
 ---
 
+## Usage
+... either selfsup pretrain or downstream task...
 
+### Configurations
+
+...
+fields... allowed values... default values...
