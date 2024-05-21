@@ -1,10 +1,5 @@
 import os
 
-# Accepted values for config fields
-LOGGGING_TOOLS = ["wandb", "tb", "none"]
-SSL_METHODS = ["simclr", "dino"]
-EVAL_METHODS = ["linear", "mlp"]
-
 # Constants for directories
 OUTPUT_DIR = "output/"
 DATASETS_DIR = "datasets/"

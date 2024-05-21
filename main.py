@@ -5,14 +5,9 @@ from src.utils.enums import DatasetEnum
 from src.utils.enums import MedMNISTCategory
 from src.utils.augmentations import AugmentationSequenceType
 
-from torchvision import models
-import torchvision.models as models
-
 # import your train with the name of the approach
 from src.ssl.simclr.train import train as simclr_train
 from src.downstream.eval.train import train as eval_train
-
-model_names = models.list_models()
 
 parser = argparse.ArgumentParser(
     description="PyTorch SSL Training for Medical Image Analysis"
