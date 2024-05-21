@@ -22,6 +22,7 @@ Training:
     weight_decay: 1e-4
   Pretrain:
     ssl_method: SIMCLR  # One of SSLMethod
+    augmentations: DEFAULT # optional, one of AugmentationSequenceType, or List[torchvision.transforms]. If not given, set to AugmentationSequenceType.DEFAULT
     params:
       encoder: "resnet50"  # One of torchvision.models.list_models()
       pretrained: True  # Use a supervised-pretrained model for further self-supervised pretraining if True, pre-train a new model from scratch otherwise
@@ -32,6 +33,7 @@ Training:
   Downstream:
     ssl_method: SIMCLR  # One of SSLMethod
     eval_method: LINEAR  # One of EvalMethod
+    augmentations: PREPROCESS # optional, one of AugmentationSequenceType, or List[torchvision.transforms]. If not given, set to AugmentationSequenceType.DEFAULT
     params:
       hidden_dim: 512  # For MLP classifier
       encoder: "resnet50"  # One of torchvision.models.list_models()

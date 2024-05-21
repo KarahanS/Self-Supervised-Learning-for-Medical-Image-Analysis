@@ -4,9 +4,9 @@ from pathlib import Path
 from omegaconf import OmegaConf
 import torchvision.models as models
 
-import src.utils.constants as const
 from src.utils.enums import DatasetEnum, MedMNISTCategory, SSLMethod, \
     DownstreamMethod, LoggingTools
+from src.utils.augmentations import AugmentationSequenceType
 
 
 class Config:
@@ -50,9 +50,17 @@ class Config:
             assert _train_cfg.Pretrain.ssl_method in SSLMethod.__members__, \
                 f"Invalid SSL method: {_train_cfg.Pretrain.ssl_method} (one of {SSLMethod.__members__})"
 
+            if "augmentations" in _train_cfg.Pretrain:
+                if isinstance(_train_cfg.Pretrain.augmentations, list):
+                    raise NotImplementedError("Custom augmentation sequences are not supported yet.")
+                    # TODO: Assert if the list contains valid torchvision transforms
+                else:
+                    assert _train_cfg.Pretrain.augmentations in AugmentationSequenceType.__members__ or _train_cfg.Pretrain.augmentations in [None, "None"], \
+                        f"Invalid augmentation sequence: {_train_cfg.Pretrain.augmentations} (one of {AugmentationSequenceType.__members__})"
+
             model_names = models.list_models()
-            assert _train_cfg.Pretrain.params in model_names, \
-                f"Invalid model name: {_train_cfg.Pretrainparams} (one of {model_names})"
+            assert _train_cfg.Pretrain.params.encoder in model_names, \
+                f"Invalid model name: {_train_cfg.Pretrain.params.encoder} (one of {model_names})"
             
             assert _train_cfg.Pretrain.params.hidden_dim > 0
             assert _train_cfg.Pretrain.params.output_dim > 0
@@ -65,9 +73,17 @@ class Config:
             assert _train_cfg.Downstream.method in DownstreamMethod.__members__, \
                 f"Invalid downstream method: {_train_cfg.Downstream.method} (one of {DownstreamMethod.__members__})"
             
+            if "augmentations" in _train_cfg.Downstream:
+                if isinstance(_train_cfg.Downstream.augmentations, list):
+                    raise NotImplementedError("Custom augmentation sequences are not supported yet.")
+                    # TODO: Assert if the list contains valid torchvision transforms
+                else:
+                    assert _train_cfg.Downstream.augmentations in AugmentationSequenceType.__members__ or _train_cfg.Downstream.augmentations in [None, "None"], \
+                        f"Invalid augmentation sequence: {_train_cfg.Downstream.augmentations} (one of {AugmentationSequenceType.__members__})"
+
             model_names = models.list_models()
-            assert _train_cfg.Downstream.params in model_names, \
-                f"Invalid model name: {_train_cfg.Downstream.params} (one of {model_names})"
+            assert _train_cfg.Downstream.params.encoder in model_names, \
+                f"Invalid model name: {_train_cfg.Downstream.params.encoder} (one of {model_names})"
 
             assert _train_cfg.Downstream.params.hidden_dim > 0
         
@@ -98,10 +114,27 @@ class Config:
             _train_cfg.Pretrain.params.output_dim = self._parse_cfg_str(_train_cfg.Pretrain.params.output_dim, int)
             _train_cfg.Pretrain.params.temperature = self._parse_cfg_str(_train_cfg.Pretrain.params.temperature, float)
             _train_cfg.Pretrain.params.n_views = self._parse_cfg_str(_train_cfg.Pretrain.params.n_views, int)
+
+            # If augmentation is not specified, set the default augmentation sequence to "default" for self-supervised learning.
+            if "augmentations" not in _train_cfg.Pretrain or _train_cfg.Pretrain.augmentations in [None, "None"]:
+                _train_cfg.Pretrain.augmentations = AugmentationSequenceType.DEFAULT
+            elif isinstance(_train_cfg.Pretrain.augmentations, str):
+                _train_cfg.Pretrain.augmentations = AugmentationSequenceType[_train_cfg.Pretrain.augmentations]
+            else:  # List[torchvision.transforms]
+                raise NotImplementedError("Custom augmentation sequences are not supported yet.")
+
         if "Downstream" in _train_cfg:
             _train_cfg.Downstream.method = DownstreamMethod[_train_cfg.Downstream.method]
             _train_cfg.Downstream.params.ssl_method = SSLMethod[_train_cfg.Downstream.params.ssl_method]
             _train_cfg.Downstream.params.hidden_dim = self._parse_cfg_str(_train_cfg.Downstream.params.hidden_dim, int)
+
+            # If augmentation is not specified, set the default augmentation sequence to "preprocess" for downstream tasks.
+            if "augmentations" not in self.config.Training.Downstream:
+                self.config.Training.Downstream.augmentations = AugmentationSequenceType.PREPROCESS
+            elif isinstance(self.config.Training.Downstream.augmentations, str):
+                self.config.Training.Downstream.augmentations = AugmentationSequenceType[self.config.Training.Downstream.augmentations]
+            else:  # List[torchvision.transforms]
+                raise NotImplementedError("Custom augmentation sequences are not supported yet.")
 
         self.config.Logging.tool = LoggingTools[self.config.Logging.tool]
         self.config.Logging.log_steps = self._parse_cfg_str(self.config.Logging.log_steps, int)
@@ -128,16 +161,9 @@ class Config:
         self.config.Training = OmegaConf.merge(self._defaults.Training.params, self.config.Training.params)
 
         # Does not automatically merge Pretrain and Downstream fields
-        # If an augmentation list is not provided, set it to an empty list
         if "Pretrain" in self.config.Training:
             self.config.Training.Pretrain = OmegaConf.merge(self._defaults.Training.Pretrain, self.config.Training.Pretrain)
-
-            if "augmentations" not in self.config.Training.Pretrain:
-                self.config.Training.Pretrain.augmentations = []
         elif "Downstream" in self.config.Training:
             self.config.Training.Downstream = OmegaConf.merge(self._defaults.Training.Downstream, self.config.Training.Downstream)
-
-            if "augmentations" not in self.config.Training.Downstream:
-                self.config.Training.Downstream.augmentations = []
 
         self.config.Logging = OmegaConf.merge(self._defaults.Logging, self.config.Logging)
