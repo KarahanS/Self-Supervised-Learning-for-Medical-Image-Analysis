@@ -4,9 +4,9 @@ from pathlib import Path
 from omegaconf import OmegaConf
 import torchvision.models as models
 
+from src.utils.augmentations import AugmentationSequenceType
 from src.utils.enums import DatasetEnum, MedMNISTCategory, SSLMethod, \
     DownstreamMethod, LoggingTools
-from src.utils.augmentations import AugmentationSequenceType
 
 
 class Config:

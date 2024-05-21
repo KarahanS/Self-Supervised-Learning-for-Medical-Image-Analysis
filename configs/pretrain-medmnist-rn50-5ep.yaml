@@ -1,0 +1,31 @@
+seed: 42
+Device:
+  gpu: True
+  fp16: False
+Dataset:
+  path: "datasets/"
+  name: MEDMNIST
+  params:
+    medmnist_flag: PATH
+    image_size: 64
+    download: True
+Training:
+  Pretrain:
+    ssl_method: SIMCLR
+    augmentations: DEFAULT
+    params:
+      encoder: "resnet50"
+      pretrained: True
+      hidden_dim: 512
+      output_dim: 128
+      temperature: 0.07
+      n_views: 2
+  params:
+    batch_size: 256
+    max_epochs: 5
+    learning_rate: 3e-4
+    weight_decay: 1e-4
+Logging:
+  path: "logs/"
+  tool: WANDB
+  log_steps: 100
