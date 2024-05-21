@@ -1,10 +1,10 @@
 import argparse
 
 import src.utils.setup as setup
-from src.utils.enums import DatasetEnum
-from src.utils.enums import MedMNISTCategory
+from src.utils.enums import DatasetEnum, MedMNISTCategory, SSLMethod, DownstreamMethod
 from src.utils.augmentations import AugmentationSequenceType
 
+from src.utils.config.config import Config
 # import your train with the name of the approach
 from src.ssl.simclr.train import train as simclr_train
 from src.downstream.eval.train import train as eval_train
@@ -12,6 +12,11 @@ from src.downstream.eval.train import train as eval_train
 parser = argparse.ArgumentParser(
     description="PyTorch SSL Training for Medical Image Analysis"
 )
+
+parser.add_argument(
+    "--cfg-path", default=None, help="Path to the configuration file."
+)
+
 parser.add_argument(
     "-data", metavar="DIR", default="./datasets", help="path to dataset"
 )
@@ -159,44 +164,49 @@ parser.add_argument(
 )
 
 
-def set_augmentation(args):
+def set_augmentation(config):
     """
     If augmentation is not specified, set the default augmentation sequence to "default" for self-supervised learning.
     For downstream tasks, set the augmentation sequence to "preprocess".
     """
-    if args.action == "pretrain":
-        if not args.augmentation:
-            args.augmentation = AugmentationSequenceType.DEFAULT
+
+    if "Pretrain" in config.Training:
+        if not config.Training.Pretrain.augmentations:  # Empty list
+            config.Training.Pretrain.augmentations = AugmentationSequenceType.DEFAULT
     else:
-        args.augmentation = AugmentationSequenceType.PREPROCESS
+        config.Training.Downstream.augmentations = AugmentationSequenceType.PREPROCESS
 
 
 def main():
     args = parser.parse_args()
-    set_augmentation(args)
-    print(args)
-    if args.dataset_name == DatasetEnum.MIMETA:
-        args.size = 224  # there is no other option for MIMETA dataset
 
-    assert (
-        args.n_views == 2
-    ), "Only two view training is supported. Please use --n-views 2."
+    cfg = Config(args.cfg_path)
+    args = cfg.get_config()
+
+    set_augmentation(cfg)
+    
+    if cfg.Dataset.name == DatasetEnum.MIMETA:
+        cfg.Dataset.params.image_size = 224  # there is no other option for MIMETA dataset
+
     # check if gpu training is available
-    setup.setup_device(args.seed)
+    setup.setup_device(cfg)
 
     # main can be used either for self-supervised pretraining or downstream task evaluation
-    if args.action == "pretrain":
+    if "Pretrain" in cfg.Training:
+        assert (
+            cfg.Training.Pretrain.params.n_views == 2
+        ), "Only two view training is supported. Please use --n-views 2."
+
         # Dataset should be read in the train.py of related SSL method
-        if args.ssl_method == "simclr":
-            simclr_train(**vars(args))
+        if cfg.Training.Pretrain == SSLMethod.SIMCLR:
+            simclr_train(cfg)
         else:
             raise ValueError("Other SSL methods are not supported yet.")
-    else:
-        if args.eval_method in ["linear", "nonlinear"]:
-            eval_train(**vars(args))  # logistic regression or mLP
+    else:  # Downstream
+        if args.eval_method in [DownstreamMethod.LINEAR, DownstreamMethod.NONLINEAR]:
+            eval_train(cfg)  # logistic regression or mLP
         else:
             raise ValueError("Other evaluation methods are not supported yet.")
-
 
 if __name__ == "__main__":
     main()

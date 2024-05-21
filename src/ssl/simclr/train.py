@@ -3,8 +3,7 @@ from src.ssl.simclr.simclr import SimCLR
 from src.loader.medmnist_loader import MedMNISTLoader
 import src.utils.setup as setup
 import src.utils.constants as const
-from src.utils.enums import DatasetEnum
-from src.utils.enums import SplitType
+from src.utils.enums import DatasetEnum, SplitType, LoggingTools
 
 from pytorch_lightning.loggers import WandbLogger, TensorBoardLogger
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint, Timer
@@ -12,18 +11,19 @@ import torch
 import torchvision.models as models
 
 
-# args will be a tuple, and kwargs will be a dict.
-def train(*args, **kwargs):
-    print(kwargs)
+def train(cfg):
+    if cfg.Logging.tool == LoggingTools.WANDB:
+        train_params = cfg.Training.params
+        ssl_params = cfg.Training.Pretrain.params
 
-    if kwargs["log"] == "wandb":
         logger = WandbLogger(
             save_dir=const.SIMCLR_LOG_PATH,
-            name=f"{kwargs['encoder']}_simclr_{kwargs['epochs']}_{kwargs['batch_size']}_pt={kwargs['pretrained']}_s={kwargs['seed']}_img={kwargs['size']}",
+            name=f"{ssl_params.encoder}_simclr_{train_params.epochs}_{train_params.batch_size}_pt={ssl_params.pretrained}" \
+                f"_s={cfg.seed}_img={cfg.Dataset.params.image_size}",
             # name : display name for the run
         )  # TODO: A more sophisticated naming convention might be needed if hyperparameters are changed
         print("Logging with WandB...")
-    elif kwargs["log"] == "tb":
+    elif cfg.Logging.tool == LoggingTools.TB:
         logger = TensorBoardLogger(save_dir=const.SIMCLR_LOG_PATH, name="tensorboard")
         print("Logging with TensorBoard...")
     else:
@@ -31,17 +31,15 @@ def train(*args, **kwargs):
         print("Logging turned off.")
 
     # Define the encoder
-    if kwargs["encoder"] not in models.list_models():
+    if ssl_params.encoder not in models.list_models():
         raise ValueError(
             "Encoder not found among the available torchvision models. Please make sure that you have entered the correct model name."
         )
         ## TODO: Add support for custom models
-    if kwargs[
-        "pretrained"
-    ]:  # TODO: Implement support for pretrained models - weights can be stored as enum
-        encoder = models.get_model(kwargs["encoder"], weights="IMAGENET1K_V2")
+    if ssl_params.pretrained:  # TODO: Implement support for pretrained models - weights can be stored as enum
+        encoder = models.get_model(ssl_params.encoder, weights="IMAGENET1K_V2")
     else:
-        encoder = models.get_model(kwargs["encoder"], weights=None)
+        encoder = models.get_model(ssl_params.encoder, weights=None)
 
     feature_size = encoder.fc.in_features
     encoder.fc = (
@@ -51,12 +49,12 @@ def train(*args, **kwargs):
     # Define the model
     model = SimCLR(
         encoder=encoder,
-        n_views=kwargs["n_views"],
+        n_views=ssl_params.n_views,
         feature_size=feature_size,
-        hidden_dim=kwargs["hidden_dim"],
-        output_dim=kwargs["output_dim"],
-        weight_decay=kwargs["weight_decay"],
-        lr=kwargs["lr"],
+        hidden_dim=ssl_params.hidden_dim,
+        output_dim=ssl_params.output_dim,
+        weight_decay=train_params.weight_decay,
+        lr=train_params.lr,
     )
 
     accelerator, num_threads = setup.get_accelerator_info()
@@ -78,20 +76,20 @@ def train(*args, **kwargs):
         default_root_dir=const.SIMCLR_CHECKPOINT_PATH,
         accelerator=accelerator,
         devices=num_threads,
-        max_epochs=kwargs["epochs"],
+        max_epochs=train_params.epochs,
         logger=logger,
         callbacks=(callback),
     )
 
     # get train loaders
-    if kwargs["dataset_name"] == DatasetEnum.MEDMNIST:
+    if cfg.Dataset.name == DatasetEnum.MEDMNIST:
         loader = MedMNISTLoader(
-            data_flag=kwargs["data_flag"],
-            augmentation_seq=kwargs["augmentation"],
+            data_flag=cfg.Dataset.params.medmnist_flag,
+            augmentation_seq=cfg.Training.Pretrain.augmentations,
             download=True,
-            batch_size=kwargs["batch_size"],
-            size=kwargs["size"],
-            num_workers=kwargs["num_workers"],
+            batch_size=train_params.batch_size,
+            size=cfg.Dataset.params.image_size,
+            num_workers=cfg.Device.num_workers,
         )
 
         train_loader = loader.get_data_and_load(
@@ -113,7 +111,8 @@ def train(*args, **kwargs):
 
     ckpt = (
         const.SIMCLR_CHECKPOINT_PATH
-        + f"{kwargs['encoder']}_simclr_{kwargs['epochs']}_{kwargs['batch_size']}_pt={kwargs['pretrained']}_s={kwargs['seed']}_img={kwargs['size']}.ckpt"
+        + f"{ssl_params.encoder}_simclr_{train_params.epochs}_{train_params.batch_size}_pt={ssl_params.pretrained}" \
+            f"_s={cfg.seed}_img={cfg.Dataset.params.image_size}.ckpt"
     )
     # Save pretrained model
     trainer.save_checkpoint(ckpt)

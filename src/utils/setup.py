@@ -4,18 +4,28 @@ import random
 import os
 
 
-def setup_device(seed):
+def setup_device(cfg):
     """
     Set up GPU device if available, otherwise set up CPU.
     """
+    device_cfg = cfg.Device
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print("Using device:", device)
-    print()
+    if device_cfg.device == "gpu" and torch.cuda.is_available():
+        if device_cfg.gpu_id >= 0:
+            device = torch.device("cuda:" + str(device_cfg.gpu_id))
+        else:
+            device = torch.device("cuda")
+        print("Using device:", device)
+        print()
+        print(torch.cuda.get_device_name(device_cfg.gpu_id))
+    else:
+        device = torch.device("cpu")
 
-    if torch.cuda.is_available():
+        print("Using device:", device)
+        print()
         print(torch.cuda.get_device_name(0))
-        set_seed(seed)
+        
+    set_seed(cfg.seed)  # TODO: Verify if it works with CPU
 
 
 def get_device():

@@ -48,13 +48,14 @@ class SSLMethod(Enum):
 
 class DownstreamMethod(Enum):
     LINEAR = "linear"
+    NONLINEAR = "nonlinear"
     MLP = "mlp"
 
     def __str__(self):
         return self.value
 
 class LoggingTools(Enum):
-    WAND = "wandb"
+    WANDB = "wandb"
     TB = "tb"
     NONE = "none"
 

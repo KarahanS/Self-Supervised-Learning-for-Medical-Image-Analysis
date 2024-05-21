@@ -17,7 +17,7 @@ class MedMNISTLoader:
     def __init__(
         self,
         augmentation_seq,
-        data_flag,
+        data_flag: medmnist.MedMNISTCategory,
         download,
         batch_size,
         num_workers,

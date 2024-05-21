@@ -1,7 +1,7 @@
 seed: 42
 Device:
   gpu: True
-  gpu_id: 0
+  gpu_id: -1  # Auto select
   num_workers: -1  # Infer from available CPUs
   fp16: False
 Dataset:
@@ -22,11 +22,11 @@ Training:
       encoder: "resnet50"
       pretrained: True
       hidden_dim: 512
-      feature_dim: 128
       output_dim: 128
       temperature: 0.07
       n_views: 2
   Downstream:
+    ssl_method: SIMCLR
     eval_method: LINEAR
     params:
       hidden_dim: 512
