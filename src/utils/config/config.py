@@ -32,7 +32,7 @@ class Config:
         
         if self.config.Dataset.name == "medmnist":
             assert self.config.Dataset.params.medmnist_flag in MedMNISTCategory.__members__, \
-                f"Invalid data flag for MedMNIST: {self.config.Dataset.data_flag} (one of {MedMNISTCategory.__members__})"
+                f"Invalid data flag for MedMNIST: {self.config.Dataset.data_flag} (one of {list(MedMNISTCategory.__members__.keys())})"
         
         assert self.config.Dataset.params.image_size in [28, 64, 128, 224], \
             f"Invalid image size: {self.config.Dataset.image_size} (valid sizes: 28, 64, 128, 224)"
@@ -49,14 +49,14 @@ class Config:
 
         if "Pretrain" in _train_cfg:
             assert _train_cfg.Pretrain.ssl_method in SSLMethod.__members__, \
-                f"Invalid SSL method: {_train_cfg.Pretrain.ssl_method} (one of {SSLMethod.__members__})"
+                f"Invalid SSL method: {_train_cfg.Pretrain.ssl_method} (one of {list(SSLMethod.__members__.keys())})"
 
             if isinstance(_train_cfg.Pretrain.augmentations, list):
                 raise NotImplementedError("Custom augmentation sequences are not supported yet.")
                 # TODO: Assert if the list contains valid torchvision transforms
             else:
                 assert _train_cfg.Pretrain.augmentations in AugmentationSequenceType.__members__ or _train_cfg.Pretrain.augmentations in [None, "None"], \
-                    f"Invalid augmentation sequence: {_train_cfg.Pretrain.augmentations} (one of {AugmentationSequenceType.__members__})"
+                    f"Invalid augmentation sequence: {_train_cfg.Pretrain.augmentations} (one of {list(AugmentationSequenceType.__members__.keys())})"
 
             model_names = models.list_models()
             assert _train_cfg.Pretrain.params.encoder in model_names, \
@@ -71,14 +71,14 @@ class Config:
             assert "Downstream" in _train_cfg, "Either Pretrain or Downstream field must be provided."
 
             assert _train_cfg.Downstream.method in DownstreamMethod.__members__, \
-                f"Invalid downstream method: {_train_cfg.Downstream.method} (one of {DownstreamMethod.__members__})"
+                f"Invalid downstream method: {_train_cfg.Downstream.method} (one of {list(DownstreamMethod.__members__.keys())})"
             
             if isinstance(_train_cfg.Downstream.augmentations, list):
                 raise NotImplementedError("Custom augmentation sequences are not supported yet.")
                 # TODO: Assert if the list contains valid torchvision transforms
             else:
                 assert _train_cfg.Downstream.augmentations in AugmentationSequenceType.__members__ or _train_cfg.Downstream.augmentations in [None, "None"], \
-                    f"Invalid augmentation sequence: {_train_cfg.Downstream.augmentations} (one of {AugmentationSequenceType.__members__})"
+                    f"Invalid augmentation sequence: {_train_cfg.Downstream.augmentations} (one of {list(AugmentationSequenceType.__members__.keys())})"
 
             model_names = models.list_models()
             assert _train_cfg.Downstream.params.encoder in model_names, \
@@ -87,7 +87,7 @@ class Config:
             assert _train_cfg.Downstream.params.hidden_dim > 0
         
         assert self.config.Logging.tool in LoggingTools.__members__, \
-            f"Invalid logging tool: {self.config.Logging.tool} (one of {LoggingTools.__members__})"
+            f"Invalid logging tool: {self.config.Logging.tool} (one of {list(LoggingTools.__members__.keys())})"
         
         assert self.config.Logging.log_steps > 0
 
