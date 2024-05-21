@@ -12,21 +12,18 @@ def setup_device(cfg):
     """
     device_cfg = cfg.Device
 
-    if device_cfg.device == "gpu" and torch.cuda.is_available():
+    if device_cfg.use_gpu and torch.cuda.is_available():
         if device_cfg.gpu_id >= 0:
             device = torch.device("cuda:" + str(device_cfg.gpu_id))
         else:
             device = torch.device("cuda")
-        print("Using device:", device)
-        print()
-        print(torch.cuda.get_device_name(device_cfg.gpu_id))
     else:
         device = torch.device("cpu")
 
-        print("Using device:", device)
-        print()
-        print(torch.cuda.get_device_name(0))
-        
+    print("Using device:", device)
+    #print()
+    #print(torch.cuda.current(device))
+
     set_seed(cfg.seed)  # TODO: Verify if it works with CPU
 
 
@@ -73,7 +70,7 @@ def configure_paths(cfg):
     Configure paths for datasets, checkpoints, logs, and other outputs.
     """
 
-    const.DATASETS_DIR = cfg.Dataset.params.datasets_dir
+    const.DATASETS_DIR = cfg.Dataset.path
     const.MEDMNIST_DATA_DIR = os.path.join(const.DATASETS_DIR, "medmnist/")
     const.MIMETA_DATA_DIR = os.path.join(const.DATASETS_DIR, "mimeta/")
 
@@ -82,7 +79,7 @@ def configure_paths(cfg):
     const.DINO_CHECKPOINT_PATH = os.path.join(const.CKPT_DIR, "dino")
     const.DOWNSTREAM_CHECKPOINT_PATH = os.path.join(const.CKPT_DIR, "eval")
 
-    const.LOG_DIR = cfg.Training.log_path
+    const.LOG_DIR = cfg.Logging.path
     const.SIMCLR_LOG_PATH = os.path.join(const.LOG_DIR, "simclr")
     const.DOWNSTREAM_LOG_PATH = os.path.join(const.LOG_DIR, "eval")
 

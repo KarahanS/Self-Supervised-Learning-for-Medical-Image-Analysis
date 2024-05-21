@@ -28,7 +28,7 @@ class Config:
             assert self.config.Device.gpu_id >= -1
         
         assert self.config.Dataset.name in DatasetEnum.__members__, \
-            f"Invalid dataset name: {self.config.Dataset.dataset_name} (one of {DatasetEnum.__members__})"
+            f"Invalid dataset name: {self.config.Dataset.name} (one of {list(DatasetEnum.__members__.keys())})"
         
         if self.config.Dataset.name == "medmnist":
             assert self.config.Dataset.params.medmnist_flag in MedMNISTCategory.__members__, \

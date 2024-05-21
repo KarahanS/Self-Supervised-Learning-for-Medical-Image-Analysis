@@ -18,9 +18,7 @@ parser.add_argument(
 
 def main():
     args = parser.parse_args()
-
     cfg = Config(args.cfg_path)
-    args = cfg.get_config()
 
     setup.configure_paths(cfg)
 
@@ -37,12 +35,12 @@ def main():
         ), "Only two view training is supported. Please use --n-views 2."
 
         # Dataset should be read in the train.py of related SSL method
-        if cfg.Training.Pretrain == SSLMethod.SIMCLR:
+        if cfg.Training.Pretrain.ssl_method == SSLMethod.SIMCLR:
             simclr_train(cfg)
         else:
             raise ValueError("Other SSL methods are not supported yet.")
     else:  # Downstream
-        if args.eval_method in [DownstreamMethod.LINEAR, DownstreamMethod.NONLINEAR]:
+        if cfg.Training.Downstream.eval_method in [DownstreamMethod.LINEAR, DownstreamMethod.NONLINEAR]:
             eval_train(cfg)  # logistic regression or mLP
         else:
             raise ValueError("Other evaluation methods are not supported yet.")

@@ -83,9 +83,9 @@ def train(cfg):
         model = LogisticRegression(
             feature_dim=d,
             num_classes=loader.get_num_classes(),
-            lr=train_params.lr,
+            lr=train_params.learning_rate,
             weight_decay=train_params.weight_decay,
-            max_epochs=train_params.epochs,
+            max_epochs=train_params.max_epochs,
         )
         modelclass = LogisticRegression
     elif cfg.Training.Downstream.eval_method == DownstreamMethod.NONLINEAR:
@@ -95,7 +95,7 @@ def train(cfg):
             num_classes=loader.get_num_classes(),
             lr=train_loader.lr,
             weight_decay=train_params.weight_decay,
-            max_epochs=train_params.epochs,
+            max_epochs=train_params.max_epochs,
         )
         modelclass = MultiLayerPerceptron
 
@@ -122,7 +122,7 @@ def train(cfg):
         default_root_dir=const.DOWNSTREAM_CHECKPOINT_PATH,
         accelerator=accelerator,
         devices=num_threads,
-        max_epochs=train_params.epochs,
+        max_epochs=train_params.max_epochs,
         logger=logger,
         callbacks=[
             # Save model as checkpoint periodically under checkpoints folder

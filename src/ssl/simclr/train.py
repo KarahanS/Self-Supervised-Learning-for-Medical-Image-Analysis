@@ -19,7 +19,7 @@ def train(cfg):
 
         logger = WandbLogger(
             save_dir=const.SIMCLR_LOG_PATH,
-            name=f"{ssl_params.encoder}_simclr_{train_params.epochs}_{train_params.batch_size}_pt={ssl_params.pretrained}" \
+            name=f"{ssl_params.encoder}_simclr_{train_params.max_epochs}_{train_params.batch_size}_pt={ssl_params.pretrained}" \
                 f"_s={cfg.seed}_img={cfg.Dataset.params.image_size}",
             # name : display name for the run
         )  # TODO: A more sophisticated naming convention might be needed if hyperparameters are changed
@@ -55,7 +55,7 @@ def train(cfg):
         hidden_dim=ssl_params.hidden_dim,
         output_dim=ssl_params.output_dim,
         weight_decay=train_params.weight_decay,
-        lr=train_params.lr,
+        lr=train_params.learning_rate,
         temperature=ssl_params.temperature
     )
 
@@ -78,7 +78,7 @@ def train(cfg):
         default_root_dir=const.SIMCLR_CHECKPOINT_PATH,
         accelerator=accelerator,
         devices=num_threads,
-        max_epochs=train_params.epochs,
+        max_epochs=train_params.max_epochs,
         logger=logger,
         callbacks=(callback),
     )
@@ -114,7 +114,7 @@ def train(cfg):
     # TODO: save_steps is given in config but not used
     ckpt = (
         const.SIMCLR_CHECKPOINT_PATH
-        + f"{ssl_params.encoder}_simclr_{train_params.epochs}_{train_params.batch_size}_pt={ssl_params.pretrained}" \
+        + f"{ssl_params.encoder}_simclr_{train_params.max_epochs}_{train_params.batch_size}_pt={ssl_params.pretrained}" \
             f"_s={cfg.seed}_img={cfg.Dataset.params.image_size}.ckpt"
     )
     # Save pretrained model
