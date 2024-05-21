@@ -183,13 +183,15 @@ def main():
     cfg = Config(args.cfg_path)
     args = cfg.get_config()
 
-    set_augmentation(cfg)
-    
-    if cfg.Dataset.name == DatasetEnum.MIMETA:
-        cfg.Dataset.params.image_size = 224  # there is no other option for MIMETA dataset
+    setup.configure_paths(cfg)
 
     # check if gpu training is available
     setup.setup_device(cfg)
+
+    if cfg.Dataset.name == DatasetEnum.MIMETA:
+        cfg.Dataset.params.image_size = 224  # there is no other option for MIMETA dataset
+
+    set_augmentation(cfg)
 
     # main can be used either for self-supervised pretraining or downstream task evaluation
     if "Pretrain" in cfg.Training:

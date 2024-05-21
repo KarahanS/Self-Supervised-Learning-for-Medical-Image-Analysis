@@ -3,6 +3,8 @@ import numpy as np
 import random
 import os
 
+import src.utils.constants as const
+
 
 def setup_device(cfg):
     """
@@ -64,3 +66,36 @@ def get_accelerator_info():
 
     # TODO: Is Multi-GPU supported? Otherwise set num_threads to 1
     return accelerator, num_threads
+
+
+def configure_paths(cfg):
+    """
+    Configure paths for datasets, checkpoints, logs, and other outputs.
+    """
+
+    const.DATASETS_DIR = cfg.Dataset.params.datasets_dir
+    const.MEDMNIST_DATA_DIR = os.path.join(const.DATASETS_DIR, "medmnist/")
+    const.MIMETA_DATA_DIR = os.path.join(const.DATASETS_DIR, "mimeta/")
+
+    const.CKPT_DIR = cfg.Training.ckpt_path
+    const.SIMCLR_CHECKPOINT_PATH = os.path.join(const.CKPT_DIR, "simclr")
+    const.DINO_CHECKPOINT_PATH = os.path.join(const.CKPT_DIR, "dino")
+    const.DOWNSTREAM_CHECKPOINT_PATH = os.path.join(const.CKPT_DIR, "eval")
+
+    const.LOG_DIR = cfg.Training.log_path
+    const.SIMCLR_LOG_PATH = os.path.join(const.LOG_DIR, "simclr")
+    const.DOWNSTREAM_LOG_PATH = os.path.join(const.LOG_DIR, "eval")
+
+    # Create directories if they do not exist
+
+    os.makedirs(const.DATASETS_DIR, exist_ok=True)
+    os.makedirs(const.MEDMNIST_DATA_DIR, exist_ok=True)
+    os.makedirs(const.MIMETA_DATA_DIR, exist_ok=True)
+
+    os.makedirs(const.CKPT_DIR, exist_ok=True)
+    os.makedirs(const.SIMCLR_CHECKPOINT_PATH, exist_ok=True)
+    os.makedirs(const.DINO_CHECKPOINT_PATH, exist_ok=True)
+
+    os.makedirs(const.LOG_DIR, exist_ok=True)
+    os.makedirs(const.SIMCLR_LOG_PATH, exist_ok=True)
+    os.makedirs(const.DOWNSTREAM_LOG_PATH, exist_ok=True)

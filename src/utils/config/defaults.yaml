@@ -10,7 +10,9 @@ Dataset:
   params:
     medmnist_flag: PATH
     image_size: 64
+    download: True
 Training:
+  ckpt_path: "checkpoints/"
   params:
     batch_size: 256
     max_epochs: 200
@@ -33,5 +35,6 @@ Training:
       encoder: "resnet50"
       pretrained_path: ???  # Mandatory field
 Logging:
+  path: "logs/"
   tool: WANDB
   log_steps: 100

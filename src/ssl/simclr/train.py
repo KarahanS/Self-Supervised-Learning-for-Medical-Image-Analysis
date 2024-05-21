@@ -86,7 +86,7 @@ def train(cfg):
         loader = MedMNISTLoader(
             data_flag=cfg.Dataset.params.medmnist_flag,
             augmentation_seq=cfg.Training.Pretrain.augmentations,
-            download=True,
+            download=cfg.Dataset.params.download,
             batch_size=train_params.batch_size,
             size=cfg.Dataset.params.image_size,
             num_workers=cfg.Device.num_workers,
