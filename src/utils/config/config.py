@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 
 from omegaconf import OmegaConf
+from omegaconf.errors import ConfigAttributeError, ConfigKeyError
 import torchvision.models as models
 
 from src.utils.augmentations import AugmentationSequenceType
@@ -90,7 +91,6 @@ class Config:
         
         assert self.config.Logging.log_steps > 0
 
-
     # TODO: Verify whether the casting is necessary or not. Most likely int and float are already casted, might remove the parse function
     def _cast_cfg(self):
         "Cast the config values to their respective intended types"
@@ -131,7 +131,6 @@ class Config:
         self.config.Logging.tool = LoggingTools[self.config.Logging.tool]
         self.config.Logging.log_steps = self._parse_cfg_str(self.config.Logging.log_steps, int)
 
-
     def __init__(self, config_path, defaults_path=(Path(__file__).parent / "defaults.yaml").resolve()):
         """
         Load the config file and merge it with the default config file
@@ -145,19 +144,46 @@ class Config:
         # Get the default values for the config fields that are not provided
         # Note: in OmegaConf.merge, the second argument has higher priority
 
-        self.config.Device = OmegaConf.merge(self._defaults.Device, self.config.Device)
-        self.config.Dataset = OmegaConf.merge(self._defaults.Dataset, self.config.Dataset)
-        self.config.Logging = OmegaConf.merge(self._defaults.Logging, self.config.Logging)
+        for key in ["Device", "Dataset", "Logging"]:
+            if key in self.config:
+                self.config[key] = OmegaConf.merge(self._defaults[key], self.config[key])
+            else:
+                self.config[key] = self._defaults[key]
         
-        # Does not automatically merge Pretrain and Downstream fields
+        for key in ["params", "checkpoints"]:
+            if key in self.config.Training:
+                self.config.Training[key] = OmegaConf.merge(self._defaults.Training[key], self.config.Training[key])
+            else:
+                self.config.Training[key] = self._defaults.Training[key]
+        
+        # Do not automatically merge Pretrain and Downstream fields
         if "Pretrain" in self.config.Training:
             self.config.Training.Pretrain = OmegaConf.merge(self._defaults.Training.Pretrain, self.config.Training.Pretrain)
         elif "Downstream" in self.config.Training:
             self.config.Training.Downstream = OmegaConf.merge(self._defaults.Training.Downstream, self.config.Training.Downstream)
 
-        self.config.Training.params = OmegaConf.merge(self._defaults.Training.params, self.config.Training.params)
-        self.config.Training.checkpoints = OmegaConf.merge(self._defaults.Training.checkpoints, self.config.Training.checkpoints)
-
         self._sanitize_cfg()
         self._cast_cfg()
 
+    def __getattr__(self, item):
+        try:
+            return getattr(self.config, item)
+        except ConfigAttributeError:
+            # For safety - should not be necessary since all fields are already merged
+            # Also captures errors arising from subsequent accesses when accessed through root Config object
+            retval = getattr(self._defaults, item)
+
+            return retval
+
+    def __getitem__(self, item):
+        try:
+            return self.config[item]
+        except ConfigKeyError:
+            # For safety - should not be necessary since all fields are already merged
+            # Also captures errors arising from subsequent accesses when accessed through root Config object
+            retval = self._defaults[item]
+
+            return retval
+
+    def __iter__(self):
+        return iter(self.config)
