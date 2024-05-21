@@ -23,8 +23,8 @@ class Config:
             print(f"Number of workers is set to the number of CPU cores ({os.cpu_count()}) since it was set to -1")
         
         assert self.config.Device.num_workers > 0
-        if self.config.Device.device == "gpu":
-            assert self.config.Device.gpu_id >= 0
+        if self.config.Device.use_gpu:
+            assert self.config.Device.gpu_id >= -1
         
         assert self.config.Dataset.name in DatasetEnum.__members__, \
             f"Invalid dataset name: {self.config.Dataset.dataset_name} (one of {DatasetEnum.__members__})"
@@ -139,23 +139,25 @@ class Config:
         :param defaults_path: Path to the default config YAML file. Fields that are not provided in the config file will be taken from here.
         """
 
+        self.config = OmegaConf.load(config_path)
+        self._defaults = OmegaConf.load(defaults_path)
+
         # Get the default values for the config fields that are not provided
         # Note: in OmegaConf.merge, the second argument has higher priority
 
         self.config.Device = OmegaConf.merge(self._defaults.Device, self.config.Device)
         self.config.Dataset = OmegaConf.merge(self._defaults.Dataset, self.config.Dataset)
-        self.config.Training = OmegaConf.merge(self._defaults.Training.params, self.config.Training.params)
-
+        self.config.Logging = OmegaConf.merge(self._defaults.Logging, self.config.Logging)
+        
         # Does not automatically merge Pretrain and Downstream fields
         if "Pretrain" in self.config.Training:
             self.config.Training.Pretrain = OmegaConf.merge(self._defaults.Training.Pretrain, self.config.Training.Pretrain)
         elif "Downstream" in self.config.Training:
             self.config.Training.Downstream = OmegaConf.merge(self._defaults.Training.Downstream, self.config.Training.Downstream)
 
-        self.config.Logging = OmegaConf.merge(self._defaults.Logging, self.config.Logging)
-
-        self.config = OmegaConf.load(config_path)
-        self._defaults = OmegaConf.load(defaults_path)
+        self.config.Training.params = OmegaConf.merge(self._defaults.Training.params, self.config.Training.params)
+        self.config.Training.checkpoints = OmegaConf.merge(self._defaults.Training.checkpoints, self.config.Training.checkpoints)
 
         self._sanitize_cfg()
         self._cast_cfg()
+

@@ -1,6 +1,6 @@
 seed: 42
 Device:
-  gpu: True  # Whether to use GPU if available
+  use_gpu: True  # Whether to use GPU if available
   gpu_id: -1  # Provide ID (>= 0) or auto select (-1)
   num_workers: -1  # Specify (>= 0) or infer from available CPUs (-1). Used for data loading
   fp16: False  # Whether to use 16-bit floating point precision

@@ -1,6 +1,6 @@
 seed: 42
 Device:
-  gpu: True
+  use_gpu: True
   fp16: False
 Dataset:
   path: "datasets/"
