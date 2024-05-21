@@ -12,6 +12,7 @@ import torchvision.models as models
 
 
 def train(cfg):
+    # TODO: Log every n steps is given in config but not used
     if cfg.Logging.tool == LoggingTools.WANDB:
         train_params = cfg.Training.params
         ssl_params = cfg.Training.Pretrain.params
@@ -55,6 +56,7 @@ def train(cfg):
         output_dim=ssl_params.output_dim,
         weight_decay=train_params.weight_decay,
         lr=train_params.lr,
+        temperature=ssl_params.temperature
     )
 
     accelerator, num_threads = setup.get_accelerator_info()
@@ -109,6 +111,7 @@ def train(cfg):
     # Load best checkpoint after training
     model = SimCLR.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
 
+    # TODO: save_steps is given in config but not used
     ckpt = (
         const.SIMCLR_CHECKPOINT_PATH
         + f"{ssl_params.encoder}_simclr_{train_params.epochs}_{train_params.batch_size}_pt={ssl_params.pretrained}" \

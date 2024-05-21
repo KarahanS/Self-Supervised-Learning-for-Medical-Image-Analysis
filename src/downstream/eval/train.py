@@ -99,6 +99,7 @@ def train(cfg):
         )
         modelclass = MultiLayerPerceptron
 
+    # TODO: Log every n steps is given in config but not used
     if cfg.Logging.tool == LoggingTools.WANDB:
         logger = WandbLogger(
             save_dir=const.DOWNSTREAM_LOG_PATH,
@@ -145,6 +146,7 @@ def train(cfg):
     model = modelclass.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
 
     # Save model
+    # TODO: save_steps is given in config but not used
     ckpt = save_without_overwrite(
         const.DOWNSTREAM_CHECKPOINT_PATH + f"{model_name}.ckpt"
     )

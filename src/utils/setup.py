@@ -77,7 +77,7 @@ def configure_paths(cfg):
     const.MEDMNIST_DATA_DIR = os.path.join(const.DATASETS_DIR, "medmnist/")
     const.MIMETA_DATA_DIR = os.path.join(const.DATASETS_DIR, "mimeta/")
 
-    const.CKPT_DIR = cfg.Training.ckpt_path
+    const.CKPT_DIR = cfg.Training.checkpoints.path
     const.SIMCLR_CHECKPOINT_PATH = os.path.join(const.CKPT_DIR, "simclr")
     const.DINO_CHECKPOINT_PATH = os.path.join(const.CKPT_DIR, "dino")
     const.DOWNSTREAM_CHECKPOINT_PATH = os.path.join(const.CKPT_DIR, "eval")
