@@ -5,7 +5,7 @@ from medmnist import INFO, Evaluator
 
 import torch.utils.data as data
 import torchvision.transforms as transforms
-from src.utils.constants import MEDMNIST_DATA_DIR
+import src.utils.constants as const
 from src.utils.augmentations import get_augmentation_sequence
 from src.utils.enums import SplitType, MedMNISTCategory
 
@@ -93,7 +93,7 @@ class MedMNISTLoader:
             split=split.value,
             transform=transform,
             download=self.download,
-            root=MEDMNIST_DATA_DIR,
+            root=const.MEDMNIST_DATA_DIR,
             size=self.size,
         )
         return dataclass

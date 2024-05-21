@@ -21,9 +21,7 @@ def main():
     cfg = Config(args.cfg_path)
 
     setup.configure_paths(cfg)
-
-    # check if gpu training is available
-    setup.setup_device(cfg)
+    setup.setup_device(cfg)  # GPU setup if available
 
     if cfg.Dataset.name == DatasetEnum.MIMETA:
         cfg.Dataset.params.image_size = 224  # there is no other option for MIMETA dataset
