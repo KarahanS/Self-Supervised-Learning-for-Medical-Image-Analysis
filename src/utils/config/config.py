@@ -34,6 +34,9 @@ class Config:
             assert self.config.Dataset.params.medmnist_flag in MedMNISTCategory.__members__, \
                 f"Invalid data flag for MedMNIST: {self.config.Dataset.data_flag} (one of {list(MedMNISTCategory.__members__.keys())})"
         
+        if not self.config.Dataset.path.endswith("/"):
+            self.config.Dataset.path += "/"
+
         assert self.config.Dataset.params.image_size in [28, 64, 128, 224], \
             f"Invalid image size: {self.config.Dataset.image_size} (valid sizes: 28, 64, 128, 224)"
     
@@ -42,6 +45,10 @@ class Config:
         assert _train_cfg.params.max_epochs > 0
         assert _train_cfg.params.learning_rate > 0
         assert _train_cfg.params.weight_decay >= 0
+
+        if not _train_cfg.checkpoints.path.endswith("/"):
+            _train_cfg.checkpoints.path += "/"
+        assert _train_cfg.checkpoints.save_steps >= 0
 
         # Raise error if both Pretrain and Downstream fields are provided
         if "Pretrain" in _train_cfg and "Downstream" in _train_cfg:
@@ -89,6 +96,8 @@ class Config:
 
             assert _train_cfg.Downstream.params.hidden_dim > 0
         
+        if not self.config.Logging.path.endswith("/"):
+            self.config.Logging.path += "/"
         assert self.config.Logging.tool in LoggingTools.__members__, \
             f"Invalid logging tool: {self.config.Logging.tool} (one of {list(LoggingTools.__members__.keys())})"
         
