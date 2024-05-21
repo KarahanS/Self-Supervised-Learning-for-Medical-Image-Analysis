@@ -70,11 +70,6 @@ class Config:
                 f"Invalid model name: {_train_cfg.Downstream.params} (one of {model_names})"
 
             assert _train_cfg.Downstream.params.hidden_dim > 0
-
-            assert _train_cfg.Downstream.params.batch_size > 0
-            assert _train_cfg.Downstream.params.learning_rate > 0
-            assert _train_cfg.Downstream.params.max_epochs > 0
-            assert _train_cfg.Downstream.params.weight_decay >= 0
         
         assert self.config.Logging.tool in LoggingTools, \
             f"Invalid logging tool: {self.config.Logging.tool} (one of {LoggingTools})"
@@ -91,10 +86,10 @@ class Config:
         self.config.Dataset.params.image_size = self._parse_cfg_str(self.config.Dataset.params.image_size, int)
         
         _train_cfg = self.config.Training
-        _train_cfg.batch_size = self._parse_cfg_str(_train_cfg.batch_size, int)
-        _train_cfg.max_epochs = self._parse_cfg_str(_train_cfg.max_epochs, int)
-        _train_cfg.learning_rate = self._parse_cfg_str(_train_cfg.learning_rate, float)
-        _train_cfg.weight_decay = self._parse_cfg_str(_train_cfg.weight_decay, float)
+        _train_cfg.params.batch_size = self._parse_cfg_str(_train_cfg.params.batch_size, int)
+        _train_cfg.params.max_epochs = self._parse_cfg_str(_train_cfg.params.max_epochs, int)
+        _train_cfg.params.learning_rate = self._parse_cfg_str(_train_cfg.params.learning_rate, float)
+        _train_cfg.params.weight_decay = self._parse_cfg_str(_train_cfg.params.weight_decay, float)
 
         if "Pretrain" in _train_cfg:
             _train_cfg.Pretrain.ssl_method = SSLMethod[_train_cfg.Pretrain.ssl_method]
@@ -123,8 +118,25 @@ class Config:
 
         self._sanitize_cfg()
         self._cast_cfg()
-        
-        # TODO: Merge the config with the default config file, except:
-        # Do not create Pretrain or Downstream fields if they don't exist. If both doesn't exist, create Pretrain.
-        # If Pretrain/Downstream does not have augmentations, give empty list.
-        ...
+
+        # Get the default values for the config fields that are not provided
+        # Note: in OmegaConf.merge, the second argument has higher priority
+
+        self.config.Device = OmegaConf.merge(self._defaults.Device, self.config.Device)
+        self.config.Dataset = OmegaConf.merge(self._defaults.Dataset, self.config.Dataset)
+        self.config.Training = OmegaConf.merge(self._defaults.Training.params, self.config.Training.params)
+
+        # Does not automatically merge Pretrain and Downstream fields
+        # If an augmentation list is not provided, set it to an empty list
+        if "Pretrain" in self.config.Training:
+            self.config.Training.Pretrain = OmegaConf.merge(self._defaults.Training.Pretrain, self.config.Training.Pretrain)
+
+            if "augmentations" not in self.config.Training.Pretrain:
+                self.config.Training.Pretrain.augmentations = []
+        elif "Downstream" in self.config.Training:
+            self.config.Training.Downstream = OmegaConf.merge(self._defaults.Training.Downstream, self.config.Training.Downstream)
+
+            if "augmentations" not in self.config.Training.Downstream:
+                self.config.Training.Downstream.augmentations = []
+
+        self.config.Logging = OmegaConf.merge(self._defaults.Logging, self.config.Logging)

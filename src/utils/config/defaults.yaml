@@ -11,10 +11,11 @@ Dataset:
     medmnist_flag: PATH
     image_size: 64
 Training:
-  batch_size: 256
-  max_epochs: 200
-  learning_rate: 3e-4
-  weight_decay: 1e-4
+  params:
+    batch_size: 256
+    max_epochs: 200
+    learning_rate: 3e-4
+    weight_decay: 1e-4
   Pretrain:
     ssl_method: SIMCLR
     params:
