@@ -50,13 +50,12 @@ class Config:
             assert _train_cfg.Pretrain.ssl_method in SSLMethod.__members__, \
                 f"Invalid SSL method: {_train_cfg.Pretrain.ssl_method} (one of {SSLMethod.__members__})"
 
-            if "augmentations" in _train_cfg.Pretrain:
-                if isinstance(_train_cfg.Pretrain.augmentations, list):
-                    raise NotImplementedError("Custom augmentation sequences are not supported yet.")
-                    # TODO: Assert if the list contains valid torchvision transforms
-                else:
-                    assert _train_cfg.Pretrain.augmentations in AugmentationSequenceType.__members__ or _train_cfg.Pretrain.augmentations in [None, "None"], \
-                        f"Invalid augmentation sequence: {_train_cfg.Pretrain.augmentations} (one of {AugmentationSequenceType.__members__})"
+            if isinstance(_train_cfg.Pretrain.augmentations, list):
+                raise NotImplementedError("Custom augmentation sequences are not supported yet.")
+                # TODO: Assert if the list contains valid torchvision transforms
+            else:
+                assert _train_cfg.Pretrain.augmentations in AugmentationSequenceType.__members__ or _train_cfg.Pretrain.augmentations in [None, "None"], \
+                    f"Invalid augmentation sequence: {_train_cfg.Pretrain.augmentations} (one of {AugmentationSequenceType.__members__})"
 
             model_names = models.list_models()
             assert _train_cfg.Pretrain.params.encoder in model_names, \
@@ -73,13 +72,12 @@ class Config:
             assert _train_cfg.Downstream.method in DownstreamMethod.__members__, \
                 f"Invalid downstream method: {_train_cfg.Downstream.method} (one of {DownstreamMethod.__members__})"
             
-            if "augmentations" in _train_cfg.Downstream:
-                if isinstance(_train_cfg.Downstream.augmentations, list):
-                    raise NotImplementedError("Custom augmentation sequences are not supported yet.")
-                    # TODO: Assert if the list contains valid torchvision transforms
-                else:
-                    assert _train_cfg.Downstream.augmentations in AugmentationSequenceType.__members__ or _train_cfg.Downstream.augmentations in [None, "None"], \
-                        f"Invalid augmentation sequence: {_train_cfg.Downstream.augmentations} (one of {AugmentationSequenceType.__members__})"
+            if isinstance(_train_cfg.Downstream.augmentations, list):
+                raise NotImplementedError("Custom augmentation sequences are not supported yet.")
+                # TODO: Assert if the list contains valid torchvision transforms
+            else:
+                assert _train_cfg.Downstream.augmentations in AugmentationSequenceType.__members__ or _train_cfg.Downstream.augmentations in [None, "None"], \
+                    f"Invalid augmentation sequence: {_train_cfg.Downstream.augmentations} (one of {AugmentationSequenceType.__members__})"
 
             model_names = models.list_models()
             assert _train_cfg.Downstream.params.encoder in model_names, \
@@ -115,10 +113,7 @@ class Config:
             _train_cfg.Pretrain.params.temperature = self._parse_cfg_str(_train_cfg.Pretrain.params.temperature, float)
             _train_cfg.Pretrain.params.n_views = self._parse_cfg_str(_train_cfg.Pretrain.params.n_views, int)
 
-            # If augmentation is not specified, set the default augmentation sequence to "default" for self-supervised learning.
-            if "augmentations" not in _train_cfg.Pretrain or _train_cfg.Pretrain.augmentations in [None, "None"]:
-                _train_cfg.Pretrain.augmentations = AugmentationSequenceType.DEFAULT
-            elif isinstance(_train_cfg.Pretrain.augmentations, str):
+            if isinstance(_train_cfg.Pretrain.augmentations, str):
                 _train_cfg.Pretrain.augmentations = AugmentationSequenceType[_train_cfg.Pretrain.augmentations]
             else:  # List[torchvision.transforms]
                 raise NotImplementedError("Custom augmentation sequences are not supported yet.")
@@ -127,11 +122,8 @@ class Config:
             _train_cfg.Downstream.method = DownstreamMethod[_train_cfg.Downstream.method]
             _train_cfg.Downstream.params.ssl_method = SSLMethod[_train_cfg.Downstream.params.ssl_method]
             _train_cfg.Downstream.params.hidden_dim = self._parse_cfg_str(_train_cfg.Downstream.params.hidden_dim, int)
-
-            # If augmentation is not specified, set the default augmentation sequence to "preprocess" for downstream tasks.
-            if "augmentations" not in self.config.Training.Downstream:
-                self.config.Training.Downstream.augmentations = AugmentationSequenceType.PREPROCESS
-            elif isinstance(self.config.Training.Downstream.augmentations, str):
+            
+            if isinstance(self.config.Training.Downstream.augmentations, str):
                 self.config.Training.Downstream.augmentations = AugmentationSequenceType[self.config.Training.Downstream.augmentations]
             else:  # List[torchvision.transforms]
                 raise NotImplementedError("Custom augmentation sequences are not supported yet.")
@@ -147,12 +139,6 @@ class Config:
         :param defaults_path: Path to the default config YAML file. Fields that are not provided in the config file will be taken from here.
         """
 
-        self.config = OmegaConf.load(config_path)
-        self._defaults = OmegaConf.load(defaults_path)
-
-        self._sanitize_cfg()
-        self._cast_cfg()
-
         # Get the default values for the config fields that are not provided
         # Note: in OmegaConf.merge, the second argument has higher priority
 
@@ -167,3 +153,9 @@ class Config:
             self.config.Training.Downstream = OmegaConf.merge(self._defaults.Training.Downstream, self.config.Training.Downstream)
 
         self.config.Logging = OmegaConf.merge(self._defaults.Logging, self.config.Logging)
+
+        self.config = OmegaConf.load(config_path)
+        self._defaults = OmegaConf.load(defaults_path)
+
+        self._sanitize_cfg()
+        self._cast_cfg()

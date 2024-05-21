@@ -19,6 +19,7 @@ Training:
     batch_size: 256
     max_epochs: 5
     learning_rate: 3e-4
+    unused_test_field: "This field is not used in the codebase"
     weight_decay: 1e-4
   Pretrain:
     ssl_method: SIMCLR  # One of SSLMethod
