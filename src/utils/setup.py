@@ -75,13 +75,13 @@ def configure_paths(cfg):
     const.MIMETA_DATA_DIR = os.path.join(const.DATASETS_DIR, "mimeta/")
 
     const.CKPT_DIR = cfg.Training.checkpoints.path
-    const.SIMCLR_CHECKPOINT_PATH = os.path.join(const.CKPT_DIR, "simclr")
-    const.DINO_CHECKPOINT_PATH = os.path.join(const.CKPT_DIR, "dino")
-    const.DOWNSTREAM_CHECKPOINT_PATH = os.path.join(const.CKPT_DIR, "eval")
+    const.SIMCLR_CHECKPOINT_PATH = os.path.join(const.CKPT_DIR, "simclr/")
+    const.DINO_CHECKPOINT_PATH = os.path.join(const.CKPT_DIR, "dino/")
+    const.DOWNSTREAM_CHECKPOINT_PATH = os.path.join(const.CKPT_DIR, "eval/")
 
     const.LOG_DIR = cfg.Logging.path
-    const.SIMCLR_LOG_PATH = os.path.join(const.LOG_DIR, "simclr")
-    const.DOWNSTREAM_LOG_PATH = os.path.join(const.LOG_DIR, "eval")
+    const.SIMCLR_LOG_PATH = os.path.join(const.LOG_DIR, "simclr/")
+    const.DOWNSTREAM_LOG_PATH = os.path.join(const.LOG_DIR, "eval/")
 
     # Create directories if they do not exist
 

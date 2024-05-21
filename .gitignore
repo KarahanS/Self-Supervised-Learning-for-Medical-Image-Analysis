@@ -162,14 +162,8 @@ cython_debug/
 # private
 shortcuts.txt
 
-# wand log files
-src/ssl/simclr/lightning_logs/
-src/ssl/simclr/wandb
-# tensorboard log files
-src/ssl/simclr/tensorboard
-
-# downstream log files
-src/downstream/eval/lightning_logs/
-src/downstream/eval/tensorboard
-src/downstream/eval/wandb
-src/downstream/eval/ckpts
+# output files
+logs/
+checkpoints/
+**/lightning_logs/
+**/wandb/

@@ -22,7 +22,7 @@ Training:
       n_views: 2
   params:
     batch_size: 256
-    max_epochs: 5
+    max_epochs: 1
     learning_rate: 3e-4
     weight_decay: 1e-4
 Logging:

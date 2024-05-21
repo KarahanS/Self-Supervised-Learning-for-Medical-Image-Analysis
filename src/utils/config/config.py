@@ -70,8 +70,11 @@ class Config:
         else:
             assert "Downstream" in _train_cfg, "Either Pretrain or Downstream field must be provided."
 
-            assert _train_cfg.Downstream.method in DownstreamMethod.__members__, \
-                f"Invalid downstream method: {_train_cfg.Downstream.method} (one of {list(DownstreamMethod.__members__.keys())})"
+            assert _train_cfg.Downstream.eval_method in DownstreamMethod.__members__, \
+                f"Invalid downstream method: {_train_cfg.Downstream.eval_method} (one of {list(DownstreamMethod.__members__.keys())})"
+            
+            assert _train_cfg.Downstream.ssl_method in SSLMethod.__members__, \
+                f"Invalid downstream method: {_train_cfg.Downstream.ssl_method} (one of {list(SSLMethod.__members__.keys())})"
             
             if isinstance(_train_cfg.Downstream.augmentations, list):
                 raise NotImplementedError("Custom augmentation sequences are not supported yet.")
@@ -119,8 +122,8 @@ class Config:
                 raise NotImplementedError("Custom augmentation sequences are not supported yet.")
 
         if "Downstream" in _train_cfg:
-            _train_cfg.Downstream.method = DownstreamMethod[_train_cfg.Downstream.method]
-            _train_cfg.Downstream.params.ssl_method = SSLMethod[_train_cfg.Downstream.params.ssl_method]
+            _train_cfg.Downstream.eval_method = DownstreamMethod[_train_cfg.Downstream.eval_method]
+            _train_cfg.Downstream.ssl_method = SSLMethod[_train_cfg.Downstream.ssl_method]
             _train_cfg.Downstream.params.hidden_dim = self._parse_cfg_str(_train_cfg.Downstream.params.hidden_dim, int)
             
             if isinstance(self.config.Training.Downstream.augmentations, str):
