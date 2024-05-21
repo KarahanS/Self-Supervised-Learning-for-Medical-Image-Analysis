@@ -132,7 +132,7 @@ class Config:
         self.config.Logging.log_steps = self._parse_cfg_str(self.config.Logging.log_steps, int)
 
 
-    def __init__(self, config_path, defaults_path=(Path(__file__).parent / "default_config.yaml").resolve()):
+    def __init__(self, config_path, defaults_path=(Path(__file__).parent / "defaults.yaml").resolve()):
         """
         Load the config file and merge it with the default config file
         :param config_path: Path to the config YAML file

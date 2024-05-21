@@ -7,7 +7,7 @@ import torch.utils.data as data
 import torchvision.transforms as transforms
 from src.utils.constants import MEDMNIST_DATA_DIR
 from src.utils.augmentations import get_augmentation_sequence
-from src.utils.enums import SplitType
+from src.utils.enums import SplitType, MedMNISTCategory
 
 ## TODO: Test data will be used for the downstream task evaluation.
 ## Use training and validation data for self-supervised learning.
@@ -17,7 +17,7 @@ class MedMNISTLoader:
     def __init__(
         self,
         augmentation_seq,
-        data_flag: medmnist.MedMNISTCategory,
+        data_flag: MedMNISTCategory,
         download,
         batch_size,
         num_workers,
