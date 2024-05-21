@@ -92,6 +92,7 @@ def configure_paths(cfg):
     os.makedirs(const.CKPT_DIR, exist_ok=True)
     os.makedirs(const.SIMCLR_CHECKPOINT_PATH, exist_ok=True)
     os.makedirs(const.DINO_CHECKPOINT_PATH, exist_ok=True)
+    os.makedirs(const.DOWNSTREAM_CHECKPOINT_PATH, exist_ok=True)
 
     os.makedirs(const.LOG_DIR, exist_ok=True)
     os.makedirs(const.SIMCLR_LOG_PATH, exist_ok=True)
