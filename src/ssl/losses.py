@@ -16,7 +16,6 @@ def nt_xent(z, temperature):
     # Find positive example
     pos_mask = self_mask.roll(shifts=cos_sim.shape[0] // 2, dims=0)
     cos_sim /= temperature
-
     loss = (-cos_sim[pos_mask] + torch.logsumexp(cos_sim, dim=-1)).mean()
 
     # Get ranking position of positive example

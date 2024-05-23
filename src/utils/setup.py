@@ -2,6 +2,7 @@ import torch
 import numpy as np
 import random
 import os
+import datetime
 
 import src.utils.constants as const
 
@@ -21,8 +22,8 @@ def setup_device(cfg):
         device = torch.device("cpu")
 
     print("Using device:", device)
-    #print()
-    #print(torch.cuda.current(device))
+    # print()
+    # print(torch.cuda.current(device))
 
     set_seed(cfg.seed)  # TODO: Verify if it works with CPU
 

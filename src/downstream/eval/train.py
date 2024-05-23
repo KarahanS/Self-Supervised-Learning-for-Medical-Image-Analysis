@@ -5,9 +5,16 @@ from pytorch_lightning.loggers import TensorBoardLogger, WandbLogger
 
 from src.loader.medmnist_loader import MedMNISTLoader
 import src.utils.setup as setup
+from src.utils.fileutils import create_modelname, create_ckpt
 from src.utils.setup import get_device
 import src.utils.constants as const
-from src.utils.enums import DatasetEnum, SplitType, SSLMethod, DownstreamMethod, LoggingTools
+from src.utils.enums import (
+    DatasetEnum,
+    SplitType,
+    SSLMethod,
+    DownstreamMethod,
+    LoggingTools,
+)
 from src.downstream.eval.lr import LogisticRegression
 from src.downstream.eval.mlp import MultiLayerPerceptron
 
@@ -16,21 +23,23 @@ from src.ssl.simclr.simclr import SimCLR
 from src.utils.eval import get_auroc_metric, get_representations
 
 import os
-
-
-# helper to save model without overwriting previous runs
-def save_without_overwrite(path):
-    inc = 0
-    while os.path.exists(path):
-        # update ckpt name
-        inc += 1
-        path = path + f"_{inc}"
-    return path
+import datetime
 
 
 def train(cfg):
     train_params = cfg.Training.params
     eval_params = cfg.Training.Downstream.params
+    modelname = create_modelname(
+        eval_params.encoder,
+        train_params.max_epochs,
+        train_params.batch_size,
+        eval_params.pretrained,
+        cfg.seed,
+        cfg.Dataset.params.image_size,
+        cfg.Dataset.params.medmnist_flag,
+        cfg.Training.Downstream.ssl_method,
+        cfg.Training.Downstream.eval_method,
+    )
 
     # get train loaders
     if cfg.Dataset.name == DatasetEnum.MEDMNIST:
@@ -49,7 +58,6 @@ def train(cfg):
             SplitType.TEST
         )  # to be used afterwards for testing
 
-        model_name = f"{cfg.Training.Downstream.eval_method}_{eval_params.encoder}_{cfg.Dataset.params.medmnist_flag}"
     else:
         raise ValueError(
             "Dataset not supported yet. Please use MedMNIST."
@@ -103,7 +111,7 @@ def train(cfg):
     if cfg.Logging.tool == LoggingTools.WANDB:
         logger = WandbLogger(
             save_dir=const.DOWNSTREAM_LOG_PATH,
-            name=f"{model_name}",
+            name=modelname,
             # name: display name for the run
         )
         print("Logging with WandB...")
@@ -114,9 +122,17 @@ def train(cfg):
         print("Logging with TensorBoard...")
     else:
         print("Logging turned off.")
+        logger = None
 
     # Trainer
     accelerator, num_threads = setup.get_accelerator_info()
+    callback = [
+        # Save model as checkpoint periodically under checkpoints folder
+        ModelCheckpoint(save_weights_only=False, mode="max", monitor="val_acc"),
+        # Auto-logs learning rate
+    ]
+    if logger is not None:
+        callback.append(LearningRateMonitor("epoch"))
 
     trainer = pl.Trainer(
         default_root_dir=const.DOWNSTREAM_CHECKPOINT_PATH,
@@ -124,32 +140,26 @@ def train(cfg):
         devices=num_threads,
         max_epochs=train_params.max_epochs,
         logger=logger,
-        callbacks=[
-            # Save model as checkpoint periodically under checkpoints folder
-            ModelCheckpoint(save_weights_only=False, mode="max", monitor="val_acc"),
-            # Auto-logs learning rate
-            LearningRateMonitor("epoch"),
-        ],
-        check_val_every_n_epoch=10,
+        callbacks=(callback),
     )
 
     # Do not require optional logging
-    trainer.logger._default_hp_metric = None
+    if logger is not None:
+        trainer.logger._default_hp_metric = None
 
     train_loader = loader.load(train_feats, shuffle=True)
     validation_loader = loader.load(val_feats, shuffle=False)
     test_loader = loader.load(test_feats, shuffle=False)
 
     trainer.fit(model, train_loader, validation_loader)
-
     # Load best checkpoint after training
+    print(const.DOWNSTREAM_CHECKPOINT_PATH)
+    print(trainer.checkpoint_callback.best_model_path)
     model = modelclass.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
 
     # Save model
     # TODO: save_steps is given in config but not used
-    ckpt = save_without_overwrite(
-        const.DOWNSTREAM_CHECKPOINT_PATH + f"{model_name}.ckpt"
-    )
+    ckpt = create_ckpt(const.DOWNSTREAM_CHECKPOINT_PATH, modelname)
     trainer.save_checkpoint(ckpt)
 
     # Test model
@@ -159,7 +169,7 @@ def train(cfg):
         data_flag = cfg.Dataset.params.medmnist_flag.value
 
         result = {
-            "top-1 acc": test_result[0]["test_acc"],
+            "test accuracy": test_result[0]["test_acc"],
             "auroc": get_auroc_metric(
                 model, test_loader, num_classes=len(INFO[data_flag]["label"])
             ),
