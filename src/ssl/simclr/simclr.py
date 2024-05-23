@@ -18,8 +18,8 @@ class SimCLR(pl.LightningModule):
         output_dim,
         weight_decay,
         lr,
-        max_epochs=200,
-        temperature=0.05,
+        max_epochs,
+        temperature,
     ):
         """
         SimCLR model
