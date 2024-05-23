@@ -22,7 +22,7 @@ Training:
       pretrained: True
       encoder: "resnet50"
       hidden_dim: 512
-      pretrained_path: checkpoints/simclr/resnet50_simclr_1_256_42_64_pathmnist_(pretrained)_2024-05-23_15-02-52.ckpt
+      pretrained_path: checkpoints/simclr/resnet50_simclr_1_256_42_64_pathmnist_(pretrained)_2024-05-23_16-48-12.ckpt
 Logging:
   path: "logs/"
   tool: NONE

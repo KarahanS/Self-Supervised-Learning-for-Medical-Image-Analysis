@@ -153,8 +153,6 @@ def train(cfg):
 
     trainer.fit(model, train_loader, validation_loader)
     # Load best checkpoint after training
-    print(const.DOWNSTREAM_CHECKPOINT_PATH)
-    print(trainer.checkpoint_callback.best_model_path)
     model = modelclass.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
 
     # Save model

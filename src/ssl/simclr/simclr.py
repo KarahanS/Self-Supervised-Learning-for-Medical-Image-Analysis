@@ -3,6 +3,8 @@ import torch.nn as nn
 import torch.optim as optim
 import pytorch_lightning as pl
 import torch.nn.functional as F
+import torch
+import torchvision.models as models
 
 from src.ssl.losses import nt_xent
 
@@ -12,9 +14,9 @@ class SimCLR(pl.LightningModule):
     def __init__(
         self,
         encoder,
+        pretrained,
         n_views,
         hidden_dim,
-        feature_size,
         output_dim,
         weight_decay,
         lr,
@@ -36,10 +38,27 @@ class SimCLR(pl.LightningModule):
         # save constructor parameters to self.hparams
         self.save_hyperparameters()
 
-        self.encoder = encoder  # base encoder without projection head
+        # Define the encoder
+        if self.hparams.encoder not in models.list_models():
+            raise ValueError(
+                "Encoder not found among the available torchvision models. Please make sure that you have entered the correct model name."
+            )
+        if (
+            self.hparams.pretrained
+        ):  # TODO: Implement support for pretrained models - weights can be stored as enum
+            self.encoder = models.get_model(
+                self.hparams.encoder, weights="IMAGENET1K_V2"
+            )
+        else:
+            self.encoder = models.get_model(self.hparams.encoder, weights=None)
+        input_dim = self.encoder.fc.in_features
+        self.encoder.fc = (
+            torch.nn.Identity()
+        )  # Replace the fully connected layer with identity function
+
         # Define your projection head
         self.projector = Projector(
-            input_dim=self.hparams.feature_size,
+            input_dim=input_dim,
             hidden_dim=self.hparams.hidden_dim,
             output_dim=self.hparams.output_dim,
         )
@@ -55,11 +74,6 @@ class SimCLR(pl.LightningModule):
             lr=self.hparams.lr,
             weight_decay=self.hparams.weight_decay,
         )
-
-        # TODO: LARS implementation:  (better for large batch sizes)
-        # base_optimizer = optim.AdamW(model.parameters(), lr=0.1)
-        # optimizer = LARS(optimizer=base_optimizer, eps=1e-8, trust_coef=0.001)
-
         # Set learning rate using a cosine annealing schedule
         # See https://pytorch.org/docs/stable/optim.html
         lr_scheduler = optim.lr_scheduler.CosineAnnealingLR(

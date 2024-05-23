@@ -8,8 +8,6 @@ from src.utils.fileutils import create_modelname, create_ckpt
 
 from pytorch_lightning.loggers import WandbLogger, TensorBoardLogger
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint, Timer
-import torch
-import torchvision.models as models
 
 
 def train(cfg):
@@ -41,29 +39,11 @@ def train(cfg):
         logger = None
         print("Logging turned off.")
 
-    # Define the encoder
-    if ssl_params.encoder not in models.list_models():
-        raise ValueError(
-            "Encoder not found among the available torchvision models. Please make sure that you have entered the correct model name."
-        )
-        ## TODO: Add support for custom models
-    if (
-        ssl_params.pretrained
-    ):  # TODO: Implement support for pretrained models - weights can be stored as enum
-        encoder = models.get_model(ssl_params.encoder, weights="IMAGENET1K_V2")
-    else:
-        encoder = models.get_model(ssl_params.encoder, weights=None)
-
-    feature_size = encoder.fc.in_features
-    encoder.fc = (
-        torch.nn.Identity()
-    )  # Replace the fully connected layer with identity function
-
     # Define the model
     model = SimCLR(
-        encoder=encoder,
+        encoder=ssl_params.encoder,
         n_views=ssl_params.n_views,
-        feature_size=feature_size,
+        pretrained=ssl_params.pretrained,
         hidden_dim=ssl_params.hidden_dim,
         output_dim=ssl_params.output_dim,
         weight_decay=train_params.weight_decay,
@@ -122,8 +102,6 @@ def train(cfg):
     trainer.fit(model, train_loader, validation_loader)
 
     # Load best checkpoint after training
-    print(const.SIMCLR_CHECKPOINT_PATH)
-    print(trainer.checkpoint_callback.best_model_path)
     model = SimCLR.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
 
     # TODO: save_steps is given in config but not used
