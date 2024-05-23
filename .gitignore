@@ -165,5 +165,6 @@ shortcuts.txt
 # output files
 logs/
 checkpoints/
+datasets/
 **/lightning_logs/
 **/wandb/

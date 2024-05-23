@@ -32,12 +32,18 @@ pip install -r requirements.txt
 ---
 
 ## Usage & Configurations
-**TODO:** Explain pretraining/downstream terms, features...
+Self-supervised training (or pretraining) is a technique in machine learning where a model is first trained on a large amount of unlabeled data to learn useful representations or features. Then the encoder part of the model is used in downstream tasks such as classification. This repository provides a framework for self-supervised learning on medical image datasets. The framework is designed to be modular and flexible, allowing for easy experimentation with different self-supervised methods and downstream tasks. Our research is focused on medical image analysis using [MedMNIST](https://medmnist.com/) dataset, but the framework can be used for any image dataset with proper dataloaders.
+
 (See: [downstream methods README](src/downstream/README.md))
 
 ```
 python main.py --cfg-path <configuration path>
 ```
+
+### Terminology
+* Supervised pretraining: Training a model on a labeled dataset such as ImageNET.
+* Self-supervised pretraining: Training a model either from scratch or using a supervised pretrained model on a large amount of unlabeled data. For this phase, the terms _training_ and _pretraining_ are used interchangeably in the literature. We use the term _pretraining_ in this repository.
+* Downstream task: Training a simple classifier model on a labeled dataset using the representations learned from self-supervised pretraining. The encoder part of the self-supervised model is used to extract features from the labeled dataset, and the classifier is trained on these features.
 
 ### Choosing running mode
 
