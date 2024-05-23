@@ -1,0 +1,28 @@
+seed: 42
+Device:
+  use_gpu: True
+  fp16: False
+Dataset:
+  path: "datasets/"
+  name: MEDMNIST
+  params:
+    medmnist_flag: PATH
+    image_size: 64
+    download: True
+Training:
+  params:
+    batch_size: 256
+    max_epochs: 1
+    learning_rate: 3e-4
+    weight_decay: 1e-4
+  Downstream:
+    ssl_method: SIMCLR
+    eval_method: LINEAR
+    params:
+      encoder: "resnet50"
+      hidden_dim: 512
+      pretrained_path: checkpoints/simclr/resnet50_simclr_1_256_pt=True_s=42_img=64.ckpt
+Logging:
+  path: "logs/"
+  tool: WANDB
+  log_steps: 100

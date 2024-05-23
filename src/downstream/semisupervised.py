@@ -28,21 +28,24 @@ def load_pretrained_model(pretrained_path, cls: LightningModule):
 
 
 # training the model on the sampled labeled data
-def sample_labeled_data(
-    dataset, data_flag, augmentation_seq, batch_size, size, num_workers, percent=0.01
-):
+def sample_labeled_data(cfg):
+    #dataset, data_flag, augmentation_seq, batch_size, size, num_workers, percent=0.01):
     # Sample 1% of the labeled data
     # dataclass is a MedMNIST dataclass
     # percent is the percentage of the labeled data to sample
     # return a new dataclass with the sampled data
-    if dataset == DatasetEnum.MEDMNIST:
+
+    train_params = cfg.Training.params
+    downstream_params = cfg.Training.Downstream.params
+
+    if cfg.Dataset.name == DatasetEnum.MEDMNIST:
         loader = MedMNISTLoader(
-            data_flag=data_flag,
-            augmentation_seq=augmentation_seq,
-            download=True,
-            batch_size=batch_size,
-            size=size,
-            num_workers=num_workers,
+            data_flag=cfg.Dataset.params.medmnist_flag,
+            augmentation_seq=cfg.Training.Downstream.augmentations,
+            download=cfg.Dataset.params.download,
+            batch_size=train_params.batch_size,
+            size=cfg.Dataset.params.image_size,
+            num_workers=cfg.Device.num_workers,
         )
     else:
         raise ValueError("Dataset not supported yet. Please use MedMNIST.")
@@ -52,7 +55,7 @@ def sample_labeled_data(
     class_indices = []
     num_classes = loader.get_num_classes()
 
-    n_samples = int(percent * len(dataclass))
+    n_samples = int(downstream_params.percent * len(dataclass))
     samples_per_class = n_samples // num_classes
 
     labels = torch.cat(

@@ -3,19 +3,28 @@ import numpy as np
 import random
 import os
 
+import src.utils.constants as const
 
-def setup_device(seed):
+
+def setup_device(cfg):
     """
     Set up GPU device if available, otherwise set up CPU.
     """
+    device_cfg = cfg.Device
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if device_cfg.use_gpu and torch.cuda.is_available():
+        if device_cfg.gpu_id >= 0:
+            device = torch.device("cuda:" + str(device_cfg.gpu_id))
+        else:
+            device = torch.device("cuda")
+    else:
+        device = torch.device("cpu")
+
     print("Using device:", device)
-    print()
+    #print()
+    #print(torch.cuda.current(device))
 
-    if torch.cuda.is_available():
-        print(torch.cuda.get_device_name(0))
-        set_seed(seed)
+    set_seed(cfg.seed)  # TODO: Verify if it works with CPU
 
 
 def get_device():
@@ -54,3 +63,37 @@ def get_accelerator_info():
 
     # TODO: Is Multi-GPU supported? Otherwise set num_threads to 1
     return accelerator, num_threads
+
+
+def configure_paths(cfg):
+    """
+    Configure paths for datasets, checkpoints, logs, and other outputs.
+    """
+
+    const.DATASETS_DIR = cfg.Dataset.path
+    const.MEDMNIST_DATA_DIR = os.path.join(const.DATASETS_DIR, "medmnist/")
+    const.MIMETA_DATA_DIR = os.path.join(const.DATASETS_DIR, "mimeta/")
+
+    const.CKPT_DIR = cfg.Training.checkpoints.path
+    const.SIMCLR_CHECKPOINT_PATH = os.path.join(const.CKPT_DIR, "simclr/")
+    const.DINO_CHECKPOINT_PATH = os.path.join(const.CKPT_DIR, "dino/")
+    const.DOWNSTREAM_CHECKPOINT_PATH = os.path.join(const.CKPT_DIR, "eval/")
+
+    const.LOG_DIR = cfg.Logging.path
+    const.SIMCLR_LOG_PATH = os.path.join(const.LOG_DIR, "simclr/")
+    const.DOWNSTREAM_LOG_PATH = os.path.join(const.LOG_DIR, "eval/")
+
+    # Create directories if they do not exist
+
+    os.makedirs(const.DATASETS_DIR, exist_ok=True)
+    os.makedirs(const.MEDMNIST_DATA_DIR, exist_ok=True)
+    os.makedirs(const.MIMETA_DATA_DIR, exist_ok=True)
+
+    os.makedirs(const.CKPT_DIR, exist_ok=True)
+    os.makedirs(const.SIMCLR_CHECKPOINT_PATH, exist_ok=True)
+    os.makedirs(const.DINO_CHECKPOINT_PATH, exist_ok=True)
+    os.makedirs(const.DOWNSTREAM_CHECKPOINT_PATH, exist_ok=True)
+
+    os.makedirs(const.LOG_DIR, exist_ok=True)
+    os.makedirs(const.SIMCLR_LOG_PATH, exist_ok=True)
+    os.makedirs(const.DOWNSTREAM_LOG_PATH, exist_ok=True)

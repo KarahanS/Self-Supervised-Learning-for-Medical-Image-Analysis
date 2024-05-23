@@ -7,13 +7,12 @@ from src.loader.medmnist_loader import MedMNISTLoader
 import src.utils.setup as setup
 from src.utils.setup import get_device
 import src.utils.constants as const
-from src.utils.enums import DatasetEnum
-from src.utils.enums import SplitType
+from src.utils.enums import DatasetEnum, SplitType, SSLMethod, DownstreamMethod, LoggingTools
 from src.downstream.eval.lr import LogisticRegression
 from src.downstream.eval.mlp import MultiLayerPerceptron
 
 from src.ssl.simclr.simclr import SimCLR
-import pytorch_lightning as pl
+
 from src.utils.eval import get_auroc_metric, get_representations
 
 import os
@@ -29,18 +28,19 @@ def save_without_overwrite(path):
     return path
 
 
-def train(*args, **kwargs):
-    print(kwargs)
+def train(cfg):
+    train_params = cfg.Training.params
+    eval_params = cfg.Training.Downstream.params
 
     # get train loaders
-    if kwargs["dataset_name"] == DatasetEnum.MEDMNIST:
+    if cfg.Dataset.name == DatasetEnum.MEDMNIST:
         loader = MedMNISTLoader(
-            data_flag=kwargs["data_flag"],
-            augmentation_seq=kwargs["augmentation"],
-            download=True,
-            batch_size=kwargs["batch_size"],
-            size=kwargs["size"],
-            num_workers=kwargs["num_workers"],
+            data_flag=cfg.Dataset.params.medmnist_flag,
+            augmentation_seq=cfg.Training.Downstream.augmentations,
+            download=cfg.Dataset.params.download,
+            batch_size=train_params.batch_size,
+            size=cfg.Dataset.params.image_size,
+            num_workers=cfg.Device.num_workers,
         )
 
         train_dataclass = loader.get_data(SplitType.TRAIN)
@@ -48,21 +48,23 @@ def train(*args, **kwargs):
         test_dataclass = loader.get_data(
             SplitType.TEST
         )  # to be used afterwards for testing
+
+        model_name = f"{cfg.Training.Downstream.eval_method}_{eval_params.encoder}_{cfg.Dataset.params.medmnist_flag}"
     else:
         raise ValueError(
             "Dataset not supported yet. Please use MedMNIST."
         )  # TODO: Implement support for MIMeta
 
-    model_name = f"{kwargs['eval_method']}_{kwargs['encoder']}_{kwargs['data_flag']}"
+        model_name = ...
 
     if (
-        kwargs["ssl_method"] == "simclr"
+        cfg.Training.Downstream.ssl_method == SSLMethod.SIMCLR
     ):  # TODO: Take the model from a dictionary rather than if-else
         LightningModel = SimCLR
     else:
         raise ValueError("Other SSL methods are not supported yet.")
     pretrained_model = LightningModel.load_from_checkpoint(
-        kwargs["pretrained_path"], strict=False
+        eval_params.pretrained_path, strict=False
     )
 
     print("Preparing data features...")
@@ -77,34 +79,35 @@ def train(*args, **kwargs):
 
     _, d = train_feats.tensors[0].shape
 
-    if kwargs["eval_method"] == "linear":
+    if cfg.Training.Downstream.eval_method == DownstreamMethod.LINEAR:
         model = LogisticRegression(
             feature_dim=d,
             num_classes=loader.get_num_classes(),
-            lr=kwargs["lr"],
-            weight_decay=kwargs["weight_decay"],
-            max_epochs=kwargs["epochs"],
+            lr=train_params.learning_rate,
+            weight_decay=train_params.weight_decay,
+            max_epochs=train_params.max_epochs,
         )
         modelclass = LogisticRegression
-    elif kwargs["eval_method"] == "nonlinear":
+    elif cfg.Training.Downstream.eval_method == DownstreamMethod.NONLINEAR:
         model = MultiLayerPerceptron(
             feature_dim=d,
-            hidden_dim=kwargs["hidden_dim"],
+            hidden_dim=eval_params.hidden_dim,
             num_classes=loader.get_num_classes(),
-            lr=kwargs["lr"],
-            weight_decay=kwargs["weight_decay"],
-            max_epochs=kwargs["epochs"],
+            lr=train_loader.lr,
+            weight_decay=train_params.weight_decay,
+            max_epochs=train_params.max_epochs,
         )
         modelclass = MultiLayerPerceptron
 
-    if kwargs["log"] == "wandb":
+    # TODO: Log every n steps is given in config but not used
+    if cfg.Logging.tool == LoggingTools.WANDB:
         logger = WandbLogger(
             save_dir=const.DOWNSTREAM_LOG_PATH,
             name=f"{model_name}",
             # name: display name for the run
         )
         print("Logging with WandB...")
-    elif kwargs["log"] == "tb":
+    elif cfg.Logging.tool == LoggingTools.TB:
         logger = TensorBoardLogger(
             save_dir=const.DOWNSTREAM_LOG_PATH, name="tensorboard"
         )
@@ -119,7 +122,7 @@ def train(*args, **kwargs):
         default_root_dir=const.DOWNSTREAM_CHECKPOINT_PATH,
         accelerator=accelerator,
         devices=num_threads,
-        max_epochs=kwargs["epochs"],
+        max_epochs=train_params.max_epochs,
         logger=logger,
         callbacks=[
             # Save model as checkpoint periodically under checkpoints folder
@@ -143,6 +146,7 @@ def train(*args, **kwargs):
     model = modelclass.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
 
     # Save model
+    # TODO: save_steps is given in config but not used
     ckpt = save_without_overwrite(
         const.DOWNSTREAM_CHECKPOINT_PATH + f"{model_name}.ckpt"
     )
@@ -151,14 +155,17 @@ def train(*args, **kwargs):
     # Test model
     test_result = trainer.test(model, dataloaders=test_loader, verbose=False)
 
-    data_flag = kwargs["data_flag"].value
+    if cfg.Dataset.name == DatasetEnum.MEDMNIST:
+        data_flag = cfg.Dataset.params.medmnist_flag.value
 
-    result = {
-        "top-1 acc": test_result[0]["test_acc"],
-        "auroc": get_auroc_metric(
-            model, test_loader, num_classes=len(INFO[data_flag]["label"])
-        ),
-    }
+        result = {
+            "top-1 acc": test_result[0]["test_acc"],
+            "auroc": get_auroc_metric(
+                model, test_loader, num_classes=len(INFO[data_flag]["label"])
+            ),
+        }
+    else:
+        RuntimeError("Dataset not supported yet. Please use MedMNIST.")
 
     print(result)
     return model, result
