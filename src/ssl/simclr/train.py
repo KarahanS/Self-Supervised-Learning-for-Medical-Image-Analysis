@@ -4,23 +4,31 @@ from src.loader.medmnist_loader import MedMNISTLoader
 import src.utils.setup as setup
 import src.utils.constants as const
 from src.utils.enums import DatasetEnum, SplitType, LoggingTools
+from src.utils.fileutils import create_modelname, create_ckpt
 
 from pytorch_lightning.loggers import WandbLogger, TensorBoardLogger
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint, Timer
-import torch
-import torchvision.models as models
 
 
 def train(cfg):
+    train_params = cfg.Training.params
+    ssl_params = cfg.Training.Pretrain.params
+    modelname = create_modelname(
+        ssl_params.encoder,
+        train_params.max_epochs,
+        train_params.batch_size,
+        ssl_params.pretrained,
+        cfg.seed,
+        cfg.Dataset.params.image_size,
+        cfg.Dataset.params.medmnist_flag,
+        "simclr",
+    )
     # TODO: Log every n steps is given in config but not used
     if cfg.Logging.tool == LoggingTools.WANDB:
-        train_params = cfg.Training.params
-        ssl_params = cfg.Training.Pretrain.params
 
         logger = WandbLogger(
             save_dir=const.SIMCLR_LOG_PATH,
-            name=f"{ssl_params.encoder}_simclr_{train_params.max_epochs}_{train_params.batch_size}_pt={ssl_params.pretrained}" \
-                f"_s={cfg.seed}_img={cfg.Dataset.params.image_size}",
+            name=modelname,
             # name : display name for the run
         )  # TODO: A more sophisticated naming convention might be needed if hyperparameters are changed
         print("Logging with WandB...")
@@ -31,32 +39,17 @@ def train(cfg):
         logger = None
         print("Logging turned off.")
 
-    # Define the encoder
-    if ssl_params.encoder not in models.list_models():
-        raise ValueError(
-            "Encoder not found among the available torchvision models. Please make sure that you have entered the correct model name."
-        )
-        ## TODO: Add support for custom models
-    if ssl_params.pretrained:  # TODO: Implement support for pretrained models - weights can be stored as enum
-        encoder = models.get_model(ssl_params.encoder, weights="IMAGENET1K_V2")
-    else:
-        encoder = models.get_model(ssl_params.encoder, weights=None)
-
-    feature_size = encoder.fc.in_features
-    encoder.fc = (
-        torch.nn.Identity()
-    )  # Replace the fully connected layer with identity function
-
     # Define the model
     model = SimCLR(
-        encoder=encoder,
+        encoder=ssl_params.encoder,
         n_views=ssl_params.n_views,
-        feature_size=feature_size,
+        pretrained=ssl_params.pretrained,
         hidden_dim=ssl_params.hidden_dim,
         output_dim=ssl_params.output_dim,
         weight_decay=train_params.weight_decay,
         lr=train_params.learning_rate,
-        temperature=ssl_params.temperature
+        temperature=ssl_params.temperature,
+        max_epochs=train_params.max_epochs,
     )
 
     accelerator, num_threads = setup.get_accelerator_info()
@@ -112,11 +105,7 @@ def train(cfg):
     model = SimCLR.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
 
     # TODO: save_steps is given in config but not used
-    ckpt = (
-        const.SIMCLR_CHECKPOINT_PATH
-        + f"{ssl_params.encoder}_simclr_{train_params.max_epochs}_{train_params.batch_size}_pt={ssl_params.pretrained}" \
-            f"_s={cfg.seed}_img={cfg.Dataset.params.image_size}.ckpt"
-    )
+    ckpt = create_ckpt(const.SIMCLR_CHECKPOINT_PATH, modelname)
     # Save pretrained model
     trainer.save_checkpoint(ckpt)
     timer.time_elapsed("train")

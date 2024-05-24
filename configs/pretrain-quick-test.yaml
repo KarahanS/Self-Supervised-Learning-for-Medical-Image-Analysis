@@ -15,14 +15,16 @@ Training:
     max_epochs: 1
     learning_rate: 3e-4
     weight_decay: 1e-4
-  Downstream:
+  Pretrain:
     ssl_method: SIMCLR
-    eval_method: LINEAR
+    augmentations: DEFAULT
     params:
-      pretrained: True
       encoder: "resnet50"
+      pretrained: True
       hidden_dim: 512
-      pretrained_path: checkpoints/simclr/resnet50_simclr_1_256_42_64_pathmnist_(pretrained)_2024-05-23_16-48-12.ckpt
+      output_dim: 128
+      temperature: 0.07
+      n_views: 2
 Logging:
   path: "logs/"
   tool: NONE
