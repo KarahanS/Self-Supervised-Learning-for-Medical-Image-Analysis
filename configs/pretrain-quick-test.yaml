@@ -1,4 +1,5 @@
 seed: 42
+config_name : "pretrain-quick-test"
 Device:
   use_gpu: True
   fp16: False

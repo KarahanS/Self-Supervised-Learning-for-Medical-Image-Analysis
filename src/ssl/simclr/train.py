@@ -8,8 +8,7 @@ from src.utils.fileutils import create_modelname, create_ckpt
 
 from pytorch_lightning.loggers import WandbLogger, TensorBoardLogger
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint, Timer
-
-
+import logging
 def train(cfg):
     train_params = cfg.Training.params
     ssl_params = cfg.Training.Pretrain.params
@@ -31,13 +30,13 @@ def train(cfg):
             name=modelname,
             # name : display name for the run
         )  # TODO: A more sophisticated naming convention might be needed if hyperparameters are changed
-        print("Logging with WandB...")
+        logging.info("Logging with WandB...")
     elif cfg.Logging.tool == LoggingTools.TB:
         logger = TensorBoardLogger(save_dir=const.SIMCLR_LOG_PATH, name="tensorboard")
-        print("Logging with TensorBoard...")
+        logging.info("Logging with TensorBoard...")
     else:
         logger = None
-        print("Logging turned off.")
+        logging.info("Logging turned off.")
 
     # Define the model
     model = SimCLR(

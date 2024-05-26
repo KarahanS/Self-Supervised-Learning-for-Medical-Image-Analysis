@@ -24,6 +24,7 @@ from src.utils.eval import get_auroc_metric, get_representations
 
 import os
 import datetime
+import logging
 
 
 def train(cfg):
@@ -75,13 +76,13 @@ def train(cfg):
         eval_params.pretrained_path, strict=False
     )
 
-    print("Preparing data features...")
+    logging.info("Preparing data features...")
     device = get_device()
     train_feats = get_representations(pretrained_model, train_dataclass, device)
     val_feats = get_representations(pretrained_model, val_dataclass, device)
     test_feats = get_representations(pretrained_model, test_dataclass, device)
 
-    print("Preparing data features: Done!")
+    logging.info("Preparing data features: Done!")
 
     # Train model
 
@@ -114,14 +115,14 @@ def train(cfg):
             name=modelname,
             # name: display name for the run
         )
-        print("Logging with WandB...")
+        logging.info("Logging with WandB...")
     elif cfg.Logging.tool == LoggingTools.TB:
         logger = TensorBoardLogger(
             save_dir=const.DOWNSTREAM_LOG_PATH, name="tensorboard"
         )
-        print("Logging with TensorBoard...")
+        logging.info("Logging with TensorBoard...")
     else:
-        print("Logging turned off.")
+        logging.info("Logging turned off.")
         logger = None
 
     # Trainer
@@ -175,5 +176,5 @@ def train(cfg):
     else:
         RuntimeError("Dataset not supported yet. Please use MedMNIST.")
 
-    print(result)
+    logging.info(result)
     return model, result

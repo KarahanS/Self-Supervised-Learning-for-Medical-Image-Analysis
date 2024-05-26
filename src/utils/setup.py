@@ -3,8 +3,25 @@ import numpy as np
 import random
 import os
 import datetime
-
+import logging
 import src.utils.constants as const
+import sys
+import time
+
+class TimestampedFile:
+    def __init__(self, file):
+        self.file = file
+        self.is_at_start_of_line = True
+
+    def write(self, data):
+        if self.is_at_start_of_line:
+            timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+            self.file.write(f"{timestamp} ")
+        self.file.write(data)
+        self.is_at_start_of_line = data.endswith('\n')
+
+    def flush(self):
+        self.file.flush()
 
 
 def setup_device(cfg):
@@ -21,9 +38,10 @@ def setup_device(cfg):
     else:
         device = torch.device("cpu")
 
-    print("Using device:", device)
-    # print()
-    # print(torch.cuda.current(device))
+    torch.backends.cudnn.enabled = False  # Set to True for faster training but more memory usage
+    logging.info("Using device:", device)
+    # logging.info()
+    # logging.info(torch.cuda.current(device))
 
     set_seed(cfg.seed)  # TODO: Verify if it works with CPU
 
@@ -47,7 +65,7 @@ def set_seed(seed: int = 7) -> None:
     torch.backends.cudnn.benchmark = False
     # Set a fixed value for the hash seed
     os.environ["PYTHONHASHSEED"] = str(seed)
-    print(f"Random seed set as {seed}")
+    logging.info(f"Random seed set as {seed}")
 
 
 def get_accelerator_info():
@@ -98,3 +116,34 @@ def configure_paths(cfg):
     os.makedirs(const.LOG_DIR, exist_ok=True)
     os.makedirs(const.SIMCLR_LOG_PATH, exist_ok=True)
     os.makedirs(const.DOWNSTREAM_LOG_PATH, exist_ok=True)
+
+# Create a logger
+def setup_logger(cfg):
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M")
+    logger = logging.getLogger("logger")
+    logger.setLevel(logging.DEBUG)  # Set lowest level to DEBUG
+
+    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+
+    # Debug handler
+    debug_handler = logging.FileHandler(os.path.join(const.RUN_LOG_PATH, f"{cfg.config_name}_{timestamp}_debug.log"))
+    debug_handler.setLevel(logging.DEBUG)
+    debug_handler.setFormatter(formatter)
+    logger.addHandler(debug_handler)
+
+    # Other handler
+    other_handler = logging.FileHandler(os.path.join(const.RUN_LOG_PATH,f"{cfg.config_name}_{timestamp}.log"))
+    other_handler.setLevel(logging.INFO)  # Set lowest level to INFO to exclude DEBUG logs
+    other_handler.setFormatter(formatter)
+    logger.addHandler(other_handler)
+
+    # Stream handler
+    sys.stdout = open(os.path.join(const.RUN_LOG_PATH, f"{cfg.config_name}_{timestamp}_stdout.log"), 'w')
+    logging.root.handlers = logger.handlers
+    logging.root.setLevel(logger.level)
+
+
+    logging.root.handlers = logger.handlers
+    logging.root.setLevel(logger.level)
+
+    return logger

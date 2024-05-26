@@ -8,6 +8,7 @@ import torchvision.models as models
 from src.utils.augmentations import AugmentationSequenceType
 from src.utils.enums import DatasetEnum, MedMNISTCategory, SSLMethod, \
     DownstreamMethod, LoggingTools
+    
 
 
 class Config:

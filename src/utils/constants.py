@@ -1,5 +1,4 @@
 import os
-
 # Get the project directory / from /src/utils/constants.py
 PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -21,3 +20,4 @@ DOWNSTREAM_CHECKPOINT_PATH = os.path.join(CKPT_DIR, "eval")
 # Path to logs (wandb/tb)
 SIMCLR_LOG_PATH = os.path.join(LOG_DIR, "simclr")
 DOWNSTREAM_LOG_PATH = os.path.join(LOG_DIR, "eval")
+RUN_LOG_PATH = os.path.join(LOG_DIR, "run")
