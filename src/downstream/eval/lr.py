@@ -108,3 +108,23 @@ class LogisticRegression(pl.LightningModule):
         utility method. This method should not be called. Use fit() instead.
         """
         self.step(batch, mode="test")
+
+def build_lr(cfg,pretrain_cfg,num_classes):
+    """
+    Builds a logistic regression model.
+
+    Args:
+        cfg (dict): The configuration dictionary.
+
+    Returns:
+        LogisticRegression: The logistic regression model.
+    """
+    model = LogisticRegression(
+        feature_dim=pretrain_cfg.Training.Pretrain.params.output_dim,
+        num_classes=num_classes,
+        lr=cfg.Training.params.learning_rate,
+        weight_decay=cfg.Training.params.weight_decay,
+        max_epochs=cfg.Training.params.max_epochs,
+    )
+
+    return model

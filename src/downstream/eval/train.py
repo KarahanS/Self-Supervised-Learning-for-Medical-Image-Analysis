@@ -26,7 +26,6 @@ import os
 import datetime
 import logging
 
-
 def train(cfg):
     train_params = cfg.Training.params
     eval_params = cfg.Training.Downstream.params

@@ -39,7 +39,7 @@ def setup_device(cfg):
         device = torch.device("cpu")
 
     torch.backends.cudnn.enabled = False  # Set to True for faster training but more memory usage
-    logging.info("Using device:", device)
+    logging.info(f"Using device: {device}")
     # logging.info()
     # logging.info(torch.cuda.current(device))
 
@@ -124,7 +124,6 @@ def setup_logger(cfg):
     logger.setLevel(logging.DEBUG)  # Set lowest level to DEBUG
 
     formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-
     # Debug handler
     debug_handler = logging.FileHandler(os.path.join(const.RUN_LOG_PATH, f"{cfg.config_name}_{timestamp}_debug.log"))
     debug_handler.setLevel(logging.DEBUG)
@@ -138,6 +137,7 @@ def setup_logger(cfg):
     logger.addHandler(other_handler)
 
     # Stream handler
+    print("All logs/sysout will be saved as:", os.path.join(const.RUN_LOG_PATH, f"{cfg.config_name}_{timestamp}"))
     sys.stdout = open(os.path.join(const.RUN_LOG_PATH, f"{cfg.config_name}_{timestamp}_stdout.log"), 'w')
     logging.root.handlers = logger.handlers
     logging.root.setLevel(logger.level)

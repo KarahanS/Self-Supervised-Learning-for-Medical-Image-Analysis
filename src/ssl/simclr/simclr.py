@@ -22,6 +22,7 @@ class SimCLR(pl.LightningModule):
         lr,
         max_epochs,
         temperature,
+        cfg_dict = None,
     ):
         """
         SimCLR model
@@ -35,6 +36,7 @@ class SimCLR(pl.LightningModule):
             temperature: Temperature parameter for the softmax in NT-Xent loss
         """
         super(SimCLR, self).__init__()
+        self.cfg_dict = cfg_dict
         # save constructor parameters to self.hparams
         self.save_hyperparameters()
 

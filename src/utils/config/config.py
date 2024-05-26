@@ -144,39 +144,54 @@ class Config:
         self.config.Logging.tool = LoggingTools[self.config.Logging.tool]
         self.config.Logging.log_steps = self._parse_cfg_str(self.config.Logging.log_steps, int)
 
-    def __init__(self, config_path, defaults_path=(Path(__file__).parent / "defaults.yaml").resolve()):
+    def __init__(self, config_path = None, config = None, defaults_path=(Path(__file__).parent / "defaults.yaml").resolve()):
         """
         Load the config file and merge it with the default config file
         :param config_path: Path to the config YAML file
         :param defaults_path: Path to the default config YAML file. Fields that are not provided in the config file will be taken from here.
         """
 
-        self.config = OmegaConf.load(config_path)
-        self._defaults = OmegaConf.load(defaults_path)
+        if config_path:
+            self.config = OmegaConf.load(config_path)
+            self._defaults = OmegaConf.load(defaults_path)
 
-        # Get the default values for the config fields that are not provided
-        # Note: in OmegaConf.merge, the second argument has higher priority
+            # Get the default values for the config fields that are not provided
+            # Note: in OmegaConf.merge, the second argument has higher priority
 
-        for key in ["Device", "Dataset", "Logging"]:
-            if key in self.config:
-                self.config[key] = OmegaConf.merge(self._defaults[key], self.config[key])
-            else:
-                self.config[key] = self._defaults[key]
-        
-        for key in ["params", "checkpoints"]:
-            if key in self.config.Training:
-                self.config.Training[key] = OmegaConf.merge(self._defaults.Training[key], self.config.Training[key])
-            else:
-                self.config.Training[key] = self._defaults.Training[key]
-        
-        # Do not automatically merge Pretrain and Downstream fields
-        if "Pretrain" in self.config.Training:
-            self.config.Training.Pretrain = OmegaConf.merge(self._defaults.Training.Pretrain, self.config.Training.Pretrain)
-        elif "Downstream" in self.config.Training:
-            self.config.Training.Downstream = OmegaConf.merge(self._defaults.Training.Downstream, self.config.Training.Downstream)
+            for key in ["Device", "Dataset", "Logging"]:
+                if key in self.config:
+                    self.config[key] = OmegaConf.merge(self._defaults[key], self.config[key])
+                else:
+                    self.config[key] = self._defaults[key]
+            
+            for key in ["params", "checkpoints"]:
+                if key in self.config.Training:
+                    self.config.Training[key] = OmegaConf.merge(self._defaults.Training[key], self.config.Training[key])
+                else:
+                    self.config.Training[key] = self._defaults.Training[key]
+            
+            # Do not automatically merge Pretrain and Downstream fields
+            if "Pretrain" in self.config.Training:
+                self.config.Training.Pretrain = OmegaConf.merge(self._defaults.Training.Pretrain, self.config.Training.Pretrain)
+            elif "Downstream" in self.config.Training:
+                self.config.Training.Downstream = OmegaConf.merge(self._defaults.Training.Downstream, self.config.Training.Downstream)
+            self._sanitize_cfg()
+            self._cast_cfg()
+        else:
+            self.config = config
+       
 
-        self._sanitize_cfg()
-        self._cast_cfg()
+    def dump_config(self, path):
+        OmegaConf.save(self.config, path)
+
+    def convert_to_dict(self):
+        return OmegaConf.to_container(self.config)
+    
+    @classmethod
+    def convert_from_dict(cls, cfg_dict):
+        config = OmegaConf.create(cfg_dict)
+        return cls(config=config)
+
 
     def __getattr__(self, item):
         try:
