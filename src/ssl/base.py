@@ -199,8 +199,7 @@ class DownstreamModelWrapper:
         if self.logger is not None:
             trainer.logger._default_hp_metric = None
             
-            train_loader = self.loader.load(train_feats, shuffle=True)
-
+        train_loader = self.loader.load(train_feats, shuffle=True)
         validation_loader = self.loader.load(val_feats, shuffle=False)
         test_loader = self.loader.load(test_feats, shuffle=False)
 
