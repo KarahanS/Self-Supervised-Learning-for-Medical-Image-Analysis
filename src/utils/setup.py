@@ -137,8 +137,6 @@ def setup_logger(cfg):
     logger.addHandler(other_handler)
 
     # Stream handler
-    print("All logs/sysout will be saved as:", os.path.join(const.RUN_LOG_PATH, f"{cfg.config_name}_{timestamp}"))
-    sys.stdout = open(os.path.join(const.RUN_LOG_PATH, f"{cfg.config_name}_{timestamp}_stdout.log"), 'w')
     logging.root.handlers = logger.handlers
     logging.root.setLevel(logger.level)
 
