@@ -113,3 +113,27 @@ class MultiLayerPerceptron(pl.LightningModule):
         utility method. This method should not be called. Use fit() instead.
         """
         self.step(batch, mode="test")
+
+def build_mlp(cfg, pretrain_cfg, num_classes):
+    """
+    Builds the MultiLayerPerceptron model.
+
+    Args:
+        cfg (OmegaConf): The configuration object.
+
+    Returns:
+        MultiLayerPerceptron: The MLP model.
+    """
+    train_params = cfg.Training.params
+    ssl_params = cfg.Training.Downstream.params
+
+    model = MultiLayerPerceptron(
+        feature_dim=pretrain_cfg.Training.Pretrain.params.output_dim,
+        hidden_dim=ssl_params.hidden_dim,
+        num_classes=num_classes,
+        lr=train_params.learning_rate,
+        weight_decay=train_params.weight_decay,
+        max_epochs=train_params.max_epochs,
+    )
+
+    return model

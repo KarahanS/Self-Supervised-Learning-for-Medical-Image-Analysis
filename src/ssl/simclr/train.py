@@ -8,38 +8,13 @@ from src.utils.fileutils import create_modelname, create_ckpt
 
 from pytorch_lightning.loggers import WandbLogger, TensorBoardLogger
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint, Timer
+import logging
 
-
-def train(cfg):
+def build_simclr_model(cfg):
+    # Define the model
     train_params = cfg.Training.params
     ssl_params = cfg.Training.Pretrain.params
-    modelname = create_modelname(
-        ssl_params.encoder,
-        train_params.max_epochs,
-        train_params.batch_size,
-        ssl_params.pretrained,
-        cfg.seed,
-        cfg.Dataset.params.image_size,
-        cfg.Dataset.params.medmnist_flag,
-        "simclr",
-    )
-    # TODO: Log every n steps is given in config but not used
-    if cfg.Logging.tool == LoggingTools.WANDB:
 
-        logger = WandbLogger(
-            save_dir=const.SIMCLR_LOG_PATH,
-            name=modelname,
-            # name : display name for the run
-        )  # TODO: A more sophisticated naming convention might be needed if hyperparameters are changed
-        print("Logging with WandB...")
-    elif cfg.Logging.tool == LoggingTools.TB:
-        logger = TensorBoardLogger(save_dir=const.SIMCLR_LOG_PATH, name="tensorboard")
-        print("Logging with TensorBoard...")
-    else:
-        logger = None
-        print("Logging turned off.")
-
-    # Define the model
     model = SimCLR(
         encoder=ssl_params.encoder,
         n_views=ssl_params.n_views,
@@ -50,6 +25,24 @@ def train(cfg):
         lr=train_params.learning_rate,
         temperature=ssl_params.temperature,
         max_epochs=train_params.max_epochs,
+        cfg_dict=cfg.convert_to_dict(), # So that we can save the cfg
+    )
+
+    return model
+
+def train(cfg, model, logger, train_loader, validation_loader):
+    train_params = cfg.Training.params
+    ssl_params = cfg.Training.Pretrain.params
+
+    modelname = create_modelname(
+        ssl_params.encoder,
+        train_params.max_epochs,
+        train_params.batch_size,
+        ssl_params.pretrained,
+        cfg.seed,
+        cfg.Dataset.params.image_size,
+        cfg.Dataset.params.medmnist_flag,
+        "simclr",
     )
 
     accelerator, num_threads = setup.get_accelerator_info()
@@ -75,28 +68,6 @@ def train(cfg):
         logger=logger,
         callbacks=(callback),
     )
-
-    # get train loaders
-    if cfg.Dataset.name == DatasetEnum.MEDMNIST:
-        loader = MedMNISTLoader(
-            data_flag=cfg.Dataset.params.medmnist_flag,
-            augmentation_seq=cfg.Training.Pretrain.augmentations,
-            download=cfg.Dataset.params.download,
-            batch_size=train_params.batch_size,
-            size=cfg.Dataset.params.image_size,
-            num_workers=cfg.Device.num_workers,
-        )
-
-        train_loader = loader.get_data_and_load(
-            split=SplitType.TRAIN, shuffle=True, contrastive=True
-        )
-        validation_loader = loader.get_data_and_load(
-            split=SplitType.VALIDATION, shuffle=False, contrastive=True
-        )
-    else:
-        raise ValueError(
-            "Dataset not supported yet. Please use MedMNIST."
-        )  # TODO: Implement support for MIMeta
 
     # Train the model
     trainer.fit(model, train_loader, validation_loader)

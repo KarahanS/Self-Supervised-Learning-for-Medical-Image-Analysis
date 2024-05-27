@@ -8,7 +8,7 @@ import torchvision.transforms as transforms
 import src.utils.constants as const
 from src.utils.augmentations import get_augmentation_sequence
 from src.utils.enums import SplitType, MedMNISTCategory
-
+import logging
 ## TODO: Test data will be used for the downstream task evaluation.
 ## Use training and validation data for self-supervised learning.
 
@@ -41,7 +41,7 @@ class MedMNISTLoader:
 
         try:
             # augmentation_seq = AugmentationSequenceType(augmentation_seq)
-            print(augmentation_seq)
+            logging.info(augmentation_seq)
             self.transforms = get_augmentation_sequence(size, augmentation_seq)
         except KeyError:
             raise ValueError("Augmentation flag is invalid")
@@ -68,8 +68,8 @@ class MedMNISTLoader:
         )
 
         dataclass = self.get_data(split, transform)
-        print(dataclass)
-        print("===================")
+        logging.info(dataclass)
+        logging.info("===================")
         return data.DataLoader(
             dataset=dataclass,
             batch_size=self.batch_size,
@@ -99,10 +99,10 @@ class MedMNISTLoader:
         return dataclass
 
     def show_info(self):
-        print(f"Task: {self.info['task']}")
-        print(f"Number of channels: {self.info['n_channels']}")
-        print(f"Number of labels: {len(self.info['label'])}")
-        print(f"Meaning of labels: {self.info['label']}")
+        logging.info(f"Task: {self.info['task']}")
+        logging.info(f"Number of channels: {self.info['n_channels']}")
+        logging.info(f"Number of labels: {len(self.info['label'])}")
+        logging.info(f"Meaning of labels: {self.info['label']}")
 
     def display_data(self):
         self.train_data.montage(length=1).show()
