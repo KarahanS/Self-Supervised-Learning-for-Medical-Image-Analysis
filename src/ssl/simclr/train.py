@@ -10,6 +10,7 @@ from pytorch_lightning.loggers import WandbLogger, TensorBoardLogger
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint, Timer
 import logging
 
+
 def build_simclr_model(cfg):
     # Define the model
     train_params = cfg.Training.params
@@ -25,10 +26,11 @@ def build_simclr_model(cfg):
         lr=train_params.learning_rate,
         temperature=ssl_params.temperature,
         max_epochs=train_params.max_epochs,
-        cfg_dict=cfg.convert_to_dict(), # So that we can save the cfg
+        cfg_dict=cfg.convert_to_dict(),  # So that we can save the cfg
     )
 
     return model
+
 
 def train(cfg, model, logger, train_loader, validation_loader):
     train_params = cfg.Training.params

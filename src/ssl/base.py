@@ -1,4 +1,3 @@
-
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -49,7 +48,7 @@ SAVE_DIR_MAP = {
     SSLMethod.DINO: None,
 }
 
-MODEL_NAME_MAP = {  
+MODEL_NAME_MAP = {
     SSLMethod.SIMCLR: "simclr",
     SSLMethod.DINO: "dino",
 }
@@ -59,6 +58,7 @@ DOWNSTREAM_BUILD_MODEL_MAP = {
     DownstreamMethod.NONLINEAR: build_mlp,
 }
 
+
 class ModelWrapper:
     """
     A wrapper class for the model. This class is responsible for the following:
@@ -66,9 +66,10 @@ class ModelWrapper:
     - Configuring the optimizer and scheduler
     - Forward pass
     """
+
     def __init__(self, cfg):
         self.cfg = cfg
-        self.ssl_method = cfg.Training.Pretrain.ssl_method 
+        self.ssl_method = cfg.Training.Pretrain.ssl_method
         self.model = self.build_model()
         self.logger = self.build_plot_logger()
         self.train_loader, self.validation_loader = self.build_data_loaders()
@@ -80,7 +81,7 @@ class ModelWrapper:
         model = MODEL_BUILDER_MAP[self.ssl_method](self.cfg)
         logging.info(f"Model built successfully : {model}")
         return model
-    
+
     def train_model(self):
         """
         Train the model based on the configuration.
@@ -90,8 +91,10 @@ class ModelWrapper:
             logging.error(f"Training method {self.ssl_method} is not supported yet.")
             raise ValueError(f"Training method {self.ssl_method} is not supported yet.")
         logging.info(f"Training model using {self.ssl_method}...")
-        return trainer(self.cfg, self.model, self.logger, self.train_loader, self.validation_loader)
-    
+        return trainer(
+            self.cfg, self.model, self.logger, self.train_loader, self.validation_loader
+        )
+
     def build_plot_logger(self):
 
         train_params = self.cfg.Training.params
@@ -108,7 +111,7 @@ class ModelWrapper:
             self.cfg.Dataset.params.medmnist_flag,
             MODEL_NAME_MAP[self.ssl_method],
         )
-            
+
         if self.cfg.Logging.tool == LoggingTools.WANDB:
 
             logger = WandbLogger(
@@ -152,9 +155,9 @@ class ModelWrapper:
             raise ValueError(
                 "Dataset not supported yet. Please use MedMNIST."
             )  # TODO: Implement support for MIMeta
-        
+
         return train_loader, validation_loader
-    
+
 
 class DownstreamModelWrapper:
     def __init__(self, cfg):
@@ -162,19 +165,29 @@ class DownstreamModelWrapper:
         logging.info(f"Running configuration: {cfg.convert_to_dict()}")
         self.pretrained_model = self.load_from_checkpoint()
         logging.info(f"Pretrained model loaded successfully: {self.pretrained_model}")
-        logging.info(f"Pretrained model configuration: {self.pretrained_model.cfg_dict}")
-        self.pretrain_cfg= Config.convert_from_dict(self.pretrained_model.cfg_dict)
+        logging.info(
+            f"Pretrained model configuration: {self.pretrained_model.cfg_dict}"
+        )
+        self.pretrain_cfg = Config.convert_from_dict(self.pretrained_model.cfg_dict)
         self.logger = self.build_plot_logger()
-        self.loader, self.train_dataclass, self.val_dataclass, self.test_dataclass= self.build_data_loaders()
+        self.loader, self.train_dataclass, self.val_dataclass, self.test_dataclass = (
+            self.build_data_loaders()
+        )
         self.model, self.modelclass = self.create_downstream_model()
         logging.info(f"Downstream model created successfully: {self.model}")
 
     def train_model(self):
         logging.info("Preparing data features...")
         device = get_device()
-        train_feats = get_representations(self.pretrained_model, self.train_dataclass, device)
-        val_feats = get_representations(self.pretrained_model, self.val_dataclass, device)
-        test_feats = get_representations(self.pretrained_model, self.test_dataclass, device)
+        train_feats = get_representations(
+            self.pretrained_model, self.train_dataclass, device
+        )
+        val_feats = get_representations(
+            self.pretrained_model, self.val_dataclass, device
+        )
+        test_feats = get_representations(
+            self.pretrained_model, self.test_dataclass, device
+        )
         logging.info("Preparing data features: Done!")
 
         accelerator, num_threads = setup.get_accelerator_info()
@@ -198,14 +211,16 @@ class DownstreamModelWrapper:
         # Do not require optional logging
         if self.logger is not None:
             trainer.logger._default_hp_metric = None
-            
+
         train_loader = self.loader.load(train_feats, shuffle=True)
         validation_loader = self.loader.load(val_feats, shuffle=False)
         test_loader = self.loader.load(test_feats, shuffle=False)
 
         trainer.fit(self.model, train_loader, validation_loader)
         # Load best checkpoint after training
-        model = self.modelclass.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
+        model = self.modelclass.load_from_checkpoint(
+            trainer.checkpoint_callback.best_model_path
+        )
 
         # Save model
         # TODO: save_steps is given in config but not used
@@ -214,22 +229,10 @@ class DownstreamModelWrapper:
 
         # Test model
         test_result = trainer.test(model, dataloaders=test_loader, verbose=False)
+        test_acc = test_result[0]["test_acc"]
 
-        if self.cfg.Dataset.name == DatasetEnum.MEDMNIST:
-            data_flag = self.cfg.Dataset.params.medmnist_flag.value
-
-            result = {
-                "test accuracy": test_result[0]["test_acc"],
-                "auroc": get_auroc_metric(
-                    model, test_loader, num_classes=len(INFO[data_flag]["label"])
-                ),
-            }
-        else:
-            RuntimeError("Dataset not supported yet. Please use MedMNIST.")
-
-        logging.info(result)
-        return model, result
-
+        logging.info(test_acc)
+        return model, test_acc
 
     def load_from_checkpoint(self):
         eval_params = self.cfg.Training.Downstream.params
@@ -239,16 +242,18 @@ class DownstreamModelWrapper:
             eval_params.pretrained_path, strict=False
         )
         return pretrained_model
-    
+
     def create_downstream_model(self):
-        model = DOWNSTREAM_BUILD_MODEL_MAP[self.cfg.Training.Downstream.eval_method](self.cfg, self.pretrain_cfg, self.loader.get_num_classes())
+        model = DOWNSTREAM_BUILD_MODEL_MAP[self.cfg.Training.Downstream.eval_method](
+            self.cfg, self.pretrain_cfg, self.loader.get_num_classes()
+        )
         modelclass = model.__class__
         return model, modelclass
 
     def build_plot_logger(self):
         train_params = self.cfg.Training.params
         eval_params = self.cfg.Training.Downstream.params
-    
+
         self.modelname = create_modelname(
             eval_params.encoder,
             train_params.max_epochs,
@@ -260,7 +265,7 @@ class DownstreamModelWrapper:
             self.cfg.Training.Downstream.ssl_method,
             self.cfg.Training.Downstream.eval_method,
         )
-            
+
         if self.cfg.Logging.tool == LoggingTools.WANDB:
             logger = WandbLogger(
                 save_dir=const.DOWNSTREAM_LOG_PATH,
@@ -278,35 +283,35 @@ class DownstreamModelWrapper:
             logger = None
 
         return logger
+
     def build_data_loaders(self):
         train_params = self.cfg.Training.params
 
         # get train loaders
         logging.info("Preparing data loaders...")
-        
-        if self.cfg.Dataset.name == DatasetEnum.MEDMNIST:
-                loader = MedMNISTLoader(
-                    data_flag=self.cfg.Dataset.params.medmnist_flag,
-                    augmentation_seq=self.cfg.Training.Downstream.augmentations,
-                    download=self.cfg.Dataset.params.download,
-                    batch_size=train_params.batch_size,
-                    size=self.cfg.Dataset.params.image_size,
-                    num_workers=self.cfg.Device.num_workers,
-                )
 
-                train_dataclass = loader.get_data(SplitType.TRAIN)
-                val_dataclass = loader.get_data(SplitType.VALIDATION)
-                test_dataclass = loader.get_data(
-                    SplitType.TEST
-                )  # to be used afterwards for testing
-        else:
-            logging.error(
-                "Dataset not supported yet. Please use MedMNIST."
+        if self.cfg.Dataset.name == DatasetEnum.MEDMNIST:
+            loader = MedMNISTLoader(
+                data_flag=self.cfg.Dataset.params.medmnist_flag,
+                augmentation_seq=self.cfg.Training.Downstream.augmentations,
+                download=self.cfg.Dataset.params.download,
+                batch_size=train_params.batch_size,
+                size=self.cfg.Dataset.params.image_size,
+                num_workers=self.cfg.Device.num_workers,
             )
+
+            train_dataclass = loader.get_data(SplitType.TRAIN)
+            val_dataclass = loader.get_data(SplitType.VALIDATION)
+            test_dataclass = loader.get_data(
+                SplitType.TEST
+            )  # to be used afterwards for testing
+        else:
+            logging.error("Dataset not supported yet. Please use MedMNIST.")
             raise ValueError(
                 "Dataset not supported yet. Please use MedMNIST."
             )  # TODO: Implement support for MIMeta
         return loader, train_dataclass, val_dataclass, test_dataclass
-            
+
+
 # TODO : Add support for DINO
 # TODO : Wrapper for Downstream tasks
