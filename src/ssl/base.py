@@ -19,7 +19,7 @@ import logging
 from src.loader.medmnist_loader import MedMNISTLoader
 from src.utils.config.config import Config
 from src.utils.setup import get_device
-from src.utils.eval import get_auroc_metric, get_representations
+from src.utils.eval import get_representations
 import src.utils.setup as setup
 from medmnist import INFO
 import pytorch_lightning as pl

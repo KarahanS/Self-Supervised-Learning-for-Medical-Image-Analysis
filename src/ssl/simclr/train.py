@@ -27,6 +27,7 @@ def build_simclr_model(cfg):
         temperature=ssl_params.temperature,
         max_epochs=train_params.max_epochs,
         cfg_dict=cfg.convert_to_dict(),  # So that we can save the cfg
+        warmup=ssl_params.warmup,
     )
 
     return model
