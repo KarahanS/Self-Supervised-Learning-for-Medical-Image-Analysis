@@ -2,6 +2,8 @@ import pytorch_lightning as pl
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+import torch
+from torchmetrics import AUROC
 
 
 # https://uvadlc-notebooks.readthedocs.io/en/latest/tutorial_notebooks/tutorial17/SimCLR.html
@@ -23,6 +25,7 @@ class LogisticRegression(pl.LightningModule):
         self.save_hyperparameters()
         # Mapping from representation h to classes
         self.model = nn.Linear(feature_dim, num_classes)
+        self.auroc = AUROC(task="multiclass", num_classes=self.hparams.num_classes)
 
     def configure_optimizers(self):
         """
@@ -82,9 +85,11 @@ class LogisticRegression(pl.LightningModule):
 
         loss = self.loss(y, y_pred)
         acc = (y_pred.argmax(dim=-1) == y).float().mean()
+        auroc = self.auroc(y_pred, y).item()
 
         self.log(mode + "_loss", loss)
         self.log(mode + "_acc", acc)
+        self.log(mode + "_auroc", auroc)
 
         return loss
 
@@ -109,7 +114,8 @@ class LogisticRegression(pl.LightningModule):
         """
         self.step(batch, mode="test")
 
-def build_lr(cfg,pretrain_cfg,num_classes):
+
+def build_lr(cfg, pretrain_cfg, num_classes):
     """
     Builds a logistic regression model.
 
