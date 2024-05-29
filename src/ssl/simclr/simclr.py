@@ -5,6 +5,7 @@ import pytorch_lightning as pl
 import torch.nn.functional as F
 import torch
 import torchvision.models as models
+from pl_bolts.optimizers.lr_scheduler import LinearWarmupCosineAnnealingLR
 
 from src.ssl.losses import nt_xent
 
@@ -22,6 +23,7 @@ class SimCLR(pl.LightningModule):
         lr,
         max_epochs,
         temperature,
+        warmup,
         cfg_dict = None,
     ):
         """
@@ -76,11 +78,14 @@ class SimCLR(pl.LightningModule):
             lr=self.hparams.lr,
             weight_decay=self.hparams.weight_decay,
         )
-        # Set learning rate using a cosine annealing schedule
-        # See https://pytorch.org/docs/stable/optim.html
-        lr_scheduler = optim.lr_scheduler.CosineAnnealingLR(
+
+        # Set learning rate using a cosine annealing schedule with warmup
+        # See https://pytorch-lightning-bolts.readthedocs.io/en/stable/schedulers/warmup_cosine_annealing.html
+        lr_scheduler = LinearWarmupCosineAnnealingLR(
             optimizer,
-            T_max=self.hparams.max_epochs,
+            warmup_epochs=self.hparams.warmup,
+            max_epochs=self.hparams.max_epochs,
+            warmup_start_lr=0.0,
             eta_min=self.hparams.lr / 50,
         )
 

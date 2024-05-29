@@ -36,6 +36,7 @@ keras==3.3.3
 lazy_loader==0.4
 libclang==18.1.1
 lightning==2.2.4
+lightning-bolts==0.7.0
 lightning-flash==0.8.2
 lightning-utilities==0.11.2
 Markdown==3.6

@@ -72,7 +72,7 @@ class Config:
             
             assert _train_cfg.Pretrain.params.hidden_dim > 0
             assert _train_cfg.Pretrain.params.output_dim > 0
-
+            assert _train_cfg.Pretrain.params.warmup >= 0
             assert _train_cfg.Pretrain.params.temperature >= 0
             assert _train_cfg.Pretrain.params.n_views > 0
         else:
