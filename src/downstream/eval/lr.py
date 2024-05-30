@@ -85,11 +85,9 @@ class LogisticRegression(pl.LightningModule):
 
         loss = self.loss(y, y_pred)
         acc = (y_pred.argmax(dim=-1) == y).float().mean()
-        auroc = self.auroc(y_pred, y).item()
 
         self.log(mode + "_loss", loss)
         self.log(mode + "_acc", acc)
-        self.log(mode + "_auroc", auroc)
 
         return loss
 
