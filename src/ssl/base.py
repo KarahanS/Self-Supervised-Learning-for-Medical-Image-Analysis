@@ -230,6 +230,7 @@ class DownstreamModelWrapper:
         trainer.save_checkpoint(ckpt)
 
         # Test model
+        model.eval()
         test_result = trainer.test(model, dataloaders=test_loader, verbose=False)
         test_acc = test_result[0]["test_acc"]
         auroc = get_auroc_metric(model, test_loader, self.loader.get_num_classes())
