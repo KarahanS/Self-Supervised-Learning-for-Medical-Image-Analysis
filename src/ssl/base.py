@@ -58,6 +58,8 @@ DOWNSTREAM_BUILD_MODEL_MAP = {
     DownstreamMethod.NONLINEAR: build_mlp,
 }
 
+import sololearn as sl
+
 
 class ModelWrapper:
     """

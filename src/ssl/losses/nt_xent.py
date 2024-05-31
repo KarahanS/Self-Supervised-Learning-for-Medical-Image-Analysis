@@ -27,3 +27,7 @@ def nt_xent(z, temperature):
 
     sim_argsort = comb_sim.argsort(dim=-1, descending=True).argmin(dim=-1)
     return loss, sim_argsort
+
+
+if __name__ == '__main__':
+    import solo
