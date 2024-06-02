@@ -175,6 +175,10 @@ def get_augmentation_sequence(size, augmentation_seq):
             ]
         ),
         AugmentationSequenceType.PREPROCESS: transforms.Compose(
-            [transforms.ToTensor(), transforms.Normalize(mean=[0.5], std=[0.5])]
+            [  # Normalise to 3 channels
+                transforms.Lambda(to_rgb),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.5], std=[0.5]),
+            ]
         ),
     }[augmentation_seq]
