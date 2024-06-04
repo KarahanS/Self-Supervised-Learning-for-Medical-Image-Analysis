@@ -2,7 +2,9 @@
 
 import torch
 from torchmetrics import AUROC
+from torchmetrics.classification import MultilabelAUROC
 from torch.utils import data
+from src.utils.enums import MedMNISTCategory
 
 
 # make sure that the encoder doesn't have projection head attached to it
@@ -44,7 +46,9 @@ def get_representations(
         # Move images to specified device
         batch_imgs = batch_imgs.to(device)
         # f(.)
+
         batch_feats = encoder(batch_imgs)
+
         # Detach tensor from current graph and move to CPU
         feats.append(batch_feats.detach().cpu())
         labels.append(batch_labels)
@@ -54,16 +58,18 @@ def get_representations(
 
     # Remove extra axis
     labels = labels.squeeze()
-
     # Sort images by labels
     if sort:
-        labels, indexes = labels.sort()
-        feats = feats[indexes]
+        if labels.dim() == 1:  # multiclass
+            labels, indexes = labels.sort()
+            feats = feats[indexes]
+        else:  # sort is invalid for multilabel
+            pass
 
     return data.TensorDataset(feats, labels)
 
 
-def get_auroc_metric(model, test_loader, num_classes):
+def get_auroc_metric(model, test_loader, num_classes, medmnist_flag):
     """
     Compute the AUROC (Area Under the Receiver Operating Characteristic) metric
     for a multiclass classification task.
@@ -83,10 +89,15 @@ def get_auroc_metric(model, test_loader, num_classes):
     for batch in test_loader:
         x, y = batch
         y_true.extend(y)
-        y_pred.extend(model(x))
+        y_pred.extend(model(x))  # forward is called
 
     y_true = torch.stack(y_true).squeeze()
     y_pred = torch.stack(y_pred)
 
-    auroc_metric = AUROC(task="multiclass", num_classes=num_classes)
-    return auroc_metric(y_pred, y_true).item()
+    if medmnist_flag == MedMNISTCategory.CHEST:
+        # macro: Calculate score for each label and average them
+        auroc_metric = MultilabelAUROC(num_labels=num_classes, average="macro")
+        return auroc_metric(y_pred, y_true).item()
+    else:
+        auroc_metric = AUROC(task="multiclass", num_classes=num_classes)
+        return auroc_metric(y_pred, y_true).item()

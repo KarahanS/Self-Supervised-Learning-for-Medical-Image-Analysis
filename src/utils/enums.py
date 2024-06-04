@@ -39,6 +39,7 @@ class SplitType(Enum):
     def __str__(self):
         return self.value
 
+
 class SSLMethod(Enum):
     SIMCLR = "simclr"
     DINO = "dino"
@@ -46,13 +47,14 @@ class SSLMethod(Enum):
     def __str__(self):
         return self.value
 
+
 class DownstreamMethod(Enum):
     LINEAR = "linear"
     NONLINEAR = "nonlinear"
-    MLP = "mlp"
 
     def __str__(self):
         return self.value
+
 
 class LoggingTools(Enum):
     WANDB = "wandb"

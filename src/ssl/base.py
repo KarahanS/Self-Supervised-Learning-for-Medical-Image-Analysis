@@ -25,6 +25,7 @@ from medmnist import INFO
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger, WandbLogger
+from src.utils.enums import MedMNISTCategory
 
 # TODO : This can be done automatically! If it is a meaningful adjustment, we can create decorators for this.
 
@@ -233,7 +234,13 @@ class DownstreamModelWrapper:
         model.eval()
         test_result = trainer.test(model, dataloaders=test_loader, verbose=False)
         test_acc = test_result[0]["test_acc"]
-        auroc = get_auroc_metric(model, test_loader, self.loader.get_num_classes())
+
+        auroc = get_auroc_metric(
+            model,
+            test_loader,
+            self.loader.get_num_classes(),
+            self.cfg.Dataset.params.medmnist_flag,
+        )
 
         self.logger.log_metrics({"auroc": auroc})
         logging.info(auroc)
