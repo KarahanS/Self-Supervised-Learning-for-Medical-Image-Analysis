@@ -17,27 +17,27 @@
 # OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-from solo.methods.barlow_twins import BarlowTwins
-from solo.methods.base import BaseMethod
-from solo.methods.byol import BYOL
-from solo.methods.deepclusterv2 import DeepClusterV2
-from solo.methods.dino import DINO
-from solo.methods.linear import LinearModel
-from solo.methods.mae import MAE
-from solo.methods.mocov2plus import MoCoV2Plus
-from solo.methods.mocov3 import MoCoV3
-from solo.methods.nnbyol import NNBYOL
-from solo.methods.nnclr import NNCLR
-from solo.methods.nnsiam import NNSiam
-from solo.methods.ressl import ReSSL
-from solo.methods.simclr import SimCLR
-from solo.methods.simsiam import SimSiam
-from solo.methods.supcon import SupCon
-from solo.methods.swav import SwAV
-from solo.methods.vibcreg import VIbCReg
-from solo.methods.vicreg import VICReg
-from solo.methods.wmse import WMSE
-from solo.methods.all4one import All4One
+from src.ssl.methods.barlow_twins import BarlowTwins
+from src.ssl.methods.base import BaseMethod
+from src.ssl.methods.byol import BYOL
+from src.ssl.methods.deepclusterv2 import DeepClusterV2
+from src.ssl.methods.dino import DINO
+from src.ssl.methods.linear import LinearModel
+from src.ssl.methods.mae import MAE
+from src.ssl.methods.mocov2plus import MoCoV2Plus
+from src.ssl.methods.mocov3 import MoCoV3
+from src.ssl.methods.nnbyol import NNBYOL
+from src.ssl.methods.nnclr import NNCLR
+from src.ssl.methods.nnsiam import NNSiam
+from src.ssl.methods.ressl import ReSSL
+from src.ssl.methods.simclr import SimCLR
+from src.ssl.methods.simsiam import SimSiam
+from src.ssl.methods.supcon import SupCon
+from src.ssl.methods.swav import SwAV
+from src.ssl.methods.vibcreg import VIbCReg
+from src.ssl.methods.vicreg import VICReg
+from src.ssl.methods.wmse import WMSE
+from src.ssl.methods.all4one import All4One
 
 
 METHODS = {

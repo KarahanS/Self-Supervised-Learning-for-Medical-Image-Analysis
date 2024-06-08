@@ -16,7 +16,7 @@ from src.utils.fileutils import create_modelname, create_ckpt
 from pytorch_lightning.loggers import WandbLogger, TensorBoardLogger
 import src.utils.constants as const
 import logging
-from src.loader.medmnist_loader import MedMNISTLoader
+from src.data.loader.medmnist_loader import MedMNISTLoader
 from src.utils.config.config import Config
 from src.utils.setup import get_device
 from src.utils.eval import get_representations
@@ -58,7 +58,7 @@ DOWNSTREAM_BUILD_MODEL_MAP = {
     DownstreamMethod.NONLINEAR: build_mlp,
 }
 
-import sololearn as sl
+
 
 
 class ModelWrapper:

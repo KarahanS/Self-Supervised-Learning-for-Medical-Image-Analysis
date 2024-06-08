@@ -28,7 +28,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.optim.lr_scheduler import MultiStepLR
 
-from solo.backbones import (
+from src.backbones import (
     convnext_base,
     convnext_large,
     convnext_small,

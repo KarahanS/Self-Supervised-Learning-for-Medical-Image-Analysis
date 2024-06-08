@@ -19,7 +19,7 @@
 
 import torch
 import torch.nn.functional as F
-from solo.losses.vicreg import invariance_loss, variance_loss
+from src.ssl.losses.vicreg import invariance_loss, variance_loss
 from src.utils.misc import gather
 
 

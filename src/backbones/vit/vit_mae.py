@@ -24,7 +24,7 @@ from functools import partial
 
 import torch
 import torch.nn as nn
-from solo.utils.misc import generate_2d_sincos_pos_embed
+from src.utils.misc import generate_2d_sincos_pos_embed
 from timm.models.vision_transformer import Block, PatchEmbed, VisionTransformer
 
 

@@ -17,21 +17,21 @@
 # OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-from solo.losses.barlow import barlow_loss_func
-from solo.losses.byol import byol_loss_func
-from solo.losses.deepclusterv2 import deepclusterv2_loss_func
-from solo.losses.dino import DINOLoss
-from solo.losses.mae import mae_loss_func
-from solo.losses.mocov2plus import mocov2plus_loss_func
-from solo.losses.mocov3 import mocov3_loss_func
-from solo.losses.nnclr import nnclr_loss_func
-from solo.losses.ressl import ressl_loss_func
-from solo.losses.simclr import simclr_loss_func
-from solo.losses.simsiam import simsiam_loss_func
-from solo.losses.swav import swav_loss_func
-from solo.losses.vibcreg import vibcreg_loss_func
-from solo.losses.vicreg import vicreg_loss_func
-from solo.losses.wmse import wmse_loss_func
+from src.ssl.losses.barlow import barlow_loss_func
+from src.ssl.losses.byol import byol_loss_func
+from src.ssl.losses.deepclusterv2 import deepclusterv2_loss_func
+from src.ssl.losses.dino import DINOLoss
+from src.ssl.losses.mae import mae_loss_func
+from src.ssl.losses.mocov2plus import mocov2plus_loss_func
+from src.ssl.losses.mocov3 import mocov3_loss_func
+from src.ssl.losses.nnclr import nnclr_loss_func
+from src.ssl.losses.ressl import ressl_loss_func
+from src.ssl.losses.simclr import simclr_loss_func
+from src.ssl.losses.simsiam import simsiam_loss_func
+from src.ssl.losses.swav import swav_loss_func
+from src.ssl.losses.vibcreg import vibcreg_loss_func
+from src.ssl.losses.vicreg import vicreg_loss_func
+from src.ssl.losses.wmse import wmse_loss_func
 from src.ssl.losses.nt_xent import nt_xent
 
 __all__ = [

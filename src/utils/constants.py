@@ -4,7 +4,7 @@ PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__
 
 # Default directories, can be configured by configure_paths in setup.py
 CKPT_DIR = os.path.join(PROJECT_DIR, "checkpoints/")
-DATASETS_DIR = os.path.join(PROJECT_DIR, "datasets/")
+DATASETS_DIR = os.path.join(PROJECT_DIR, "/graphics/scratch2/students/kargibo/dataset/")
 LOG_DIR = os.path.join(PROJECT_DIR, "logs/")
 SRC_DIR = os.path.join(PROJECT_DIR, "src/")
 
