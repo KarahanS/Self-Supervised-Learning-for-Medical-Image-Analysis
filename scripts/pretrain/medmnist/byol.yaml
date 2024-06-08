@@ -18,9 +18,9 @@ hydra:
 name: "byol-custom-dataset"
 method: "byol"
 backbone:
-  name: "resnet18"
+  name: "resnet50"
   kwargs:
-    pretrained: True
+    pretrained: False
 method_kwargs:
   proj_hidden_dim: 4096
   proj_output_dim: 256
