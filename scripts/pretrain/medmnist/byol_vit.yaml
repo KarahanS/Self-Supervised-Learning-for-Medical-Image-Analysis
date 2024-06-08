@@ -21,11 +21,9 @@ backbone:
   kwargs:
     pretrained: False
 method_kwargs:
-  proj_hidden_dim: 4096
-  proj_output_dim: 256
-  num_prototypes: 65536
-  pred_hidden_dim: 8192
-  norm_last_layer: False
+  proj_hidden_dim: 512
+  proj_output_dim: 128
+  pred_hidden_dim: 1024
 
 momentum:
   base_tau: 0.99

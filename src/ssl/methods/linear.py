@@ -26,6 +26,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.optim.lr_scheduler import ExponentialLR, MultiStepLR, ReduceLROnPlateau
+from torchmetrics import AUROC
 
 from src.utils.lars import LARS
 from src.utils.lr_scheduler import LinearWarmupCosineAnnealingLR
@@ -35,7 +36,6 @@ from src.utils.misc import (
     param_groups_layer_decay,
     remove_bias_and_norm_from_weight_decay,
 )
-
 
 class LinearModel(pl.LightningModule):
     _OPTIMIZERS = {
@@ -57,7 +57,7 @@ class LinearModel(pl.LightningModule):
         backbone: nn.Module,
         cfg: omegaconf.DictConfig,
         loss_func: Callable = None,
-        mixup_func: Callable = None,
+        mixup_func: Callable = None
     ):
         """Implements linear and finetune evaluation.
 
@@ -110,8 +110,17 @@ class LinearModel(pl.LightningModule):
             features_dim = self.backbone.num_features
 
         # classifier
-        self.classifier = nn.Linear(features_dim, cfg.data.num_classes)  # type: ignore
-
+        if cfg.downstream_classifier:
+            if cfg.downstream_classifier.name == "mlp":
+                self.classifier = nn.Sequential(
+                    nn.Linear(features_dim, cfg.downstream_classifier.kwargs.hidden_dim),
+                    nn.ReLU(),
+                    nn.Linear(cfg.downstream_classifier.kwargs.hidden_dim, cfg.data.num_classes)
+                )
+            elif cfg.downstream_classifier.name == "linear":
+                self.classifier = nn.Linear(features_dim, cfg.data.num_classes)  # type: ignore
+            else:
+                raise ValueError(f"Classifier {cfg.downstream_classifier.name} not implemented.")
         # mixup/cutmix function
         self.mixup_func: Callable = mixup_func
 
@@ -156,6 +165,7 @@ class LinearModel(pl.LightningModule):
             for param in self.backbone.parameters():
                 param.requires_grad = False
 
+        self.num_classes = cfg.data.num_classes
         # keep track of validation metrics
         self.validation_step_outputs = []
 
@@ -196,6 +206,12 @@ class LinearModel(pl.LightningModule):
         cfg.performance.disable_channel_last = omegaconf_select(
             cfg, "performance.disable_channel_last", False
         )
+
+        cfg.downstream_classifier = omegaconf_select(cfg, "downstream_classifier", 'linear')
+        cfg.downstream_classifier.kwargs = omegaconf_select(cfg, "downstream_classifier.kwargs", {})
+
+        if cfg.downstream_classifier == 'mlp':
+            assert not omegaconf.OmegaConf.is_missing(cfg, "downstream_classifier.kwargs.hidden_dim")
 
         return cfg
 
@@ -328,8 +344,12 @@ class LinearModel(pl.LightningModule):
         else:
             out = self(X)["logits"]
             loss = F.cross_entropy(out, target)
-            acc1, acc5 = accuracy_at_k(out, target, top_k=(1, 5))
-            metrics.update({"loss": loss, "acc1": acc1, "acc5": acc5})
+            acc1, acc5 = accuracy_at_k(out, target, top_k=(1, min(5, self.num_classes)))
+
+            auroc = AUROC(num_classes=self.num_classes)
+            auroc_score = auroc(out, target)
+
+            metrics.update({"loss": loss, "acc1": acc1, "acc5": acc5, "auroc": auroc_score})
 
         return metrics
 
@@ -352,7 +372,9 @@ class LinearModel(pl.LightningModule):
 
         log = {"train_loss": out["loss"]}
         if self.mixup_func is None:
-            log.update({"train_acc1": out["acc1"], "train_acc5": out["acc5"]})
+            log.update({"train_acc1": out["acc1"], "train_acc5": out["acc5"],
+                        "train_auroc": out["auroc"]})
+
 
         self.log_dict(log, on_epoch=True, sync_dist=True)
         return out["loss"]
@@ -377,6 +399,7 @@ class LinearModel(pl.LightningModule):
             "val_loss": out["loss"],
             "val_acc1": out["acc1"],
             "val_acc5": out["acc5"],
+            "val_auroc": out["auroc"],
         }
         self.validation_step_outputs.append(metrics)
         return metrics

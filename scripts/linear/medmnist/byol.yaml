@@ -1,6 +1,5 @@
 defaults:
   - _self_
-  - augmentations: asymmetric.yaml
   - wandb: private.yaml
   - data: pathmnist.yaml
   - override hydra/hydra_logging: disabled
@@ -12,39 +11,34 @@ hydra:
   run:
     dir: .
 
-name: "simclr-medmnist-resnet"
-method: "simclr"
+name: "byol-medmnist-linear"
+pretrained_feature_extractor: None
 backbone:
   name: "resnet50"
-  kwargs:
-    pretrained: False
-method_kwargs:
-  proj_hidden_dim: 512
-  proj_output_dim: 128
-  temperature: 0.07
+pretrain_method: "byol"
 optimizer:
-  name: "lars"
-  batch_size: 128
+  name: "sgd"
+  batch_size: 256
   lr: 0.3
-  classifier_lr: 0.1
-  weight_decay: 1e-4
-  kwargs:
-    clip_lr: True
-    eta: 0.02
-    exclude_bias_n_norm: True
+  weight_decay: 0
 scheduler:
-  name: "warmup_cosine"
+  name: "step"
+  lr_decay_steps: [60, 80]
 checkpoint:
   enabled: True
   dir: "trained_models"
   frequency: 1
 auto_resume:
   enabled: True
+downstream_classifier:
+  name: "mlp"
+  kwargs:
+    hidden_dim: 1024
 
-max_epochs: 400
-devices: [0,]
+# overwrite PL stuff
+max_epochs: 100
+devices: [0]
 sync_batchnorm: True
 accelerator: "gpu"
 strategy: "ddp"
-precision: "32"
-seed: 42
+precision: 32

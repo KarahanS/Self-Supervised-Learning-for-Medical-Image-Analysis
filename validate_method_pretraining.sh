@@ -12,19 +12,26 @@ VIT_MODEL="vit_tiny"
 BATCH_SIZE=32
 EPOCHS=1
 
-DATASET_CFGS=("bloodmnist.yaml" "chestmnist.yaml", "pathmnist.yaml")
-EXPERIMENT_NAMES=("bloodmnist" "chestmnist", "pathmnist")
+DATASET_CFGS=("chestmnist.yaml")
+EXPERIMENT_NAMES=("chestmnist")
 PRETRAINED=("True" "False")
+
 
 
 for PRETRAIN in "${PRETRAINED[@]}"
 do
     for DATASET in "${DATASET_CFGS[@]}"
     do
+
+    
+        echo "Running: python main_solo.py --config-path ${PRETRAIN_MEDMNIST_PATH} --config-name ${METHOD_RESNET_PATH}  \
+            data=${DATASET} optimizer.batch_size=${BATCH_SIZE} max_epochs=${EPOCHS} \
+            backbone.name=${RESNET_MODEL} backbone.kwargs.pretrained=${PRETRAIN} \
+            name='_validate-${DATASET}-r50-epochs-${EPOCHS}-pretrained-${PRETRAIN}-batch_size-${BATCH_SIZE}'"
         python main_solo.py --config-path $PRETRAIN_MEDMNIST_PATH --config-name $METHOD_RESNET_PATH  \
             data=$DATASET optimizer.batch_size=$BATCH_SIZE max_epochs=$EPOCHS \
-            backbone.name=$METHOD_RESNET_PATH   backbone.kwargs.pretrained=$PRETRAIN \
-            name="_debug-${DATASET}-r50-epochs-${EPOCHS}-pretrained-${PRETRAIN}-batch_size-${BATCH_SIZE}"
+            backbone.name=$RESNET_MODEL backbone.kwargs.pretrained=$PRETRAIN \
+            name="_validate-${DATASET}-r50-epochs-${EPOCHS}-pretrained-${PRETRAIN}-batch_size-${BATCH_SIZE}"
     done
 done
 
@@ -32,10 +39,16 @@ for PRETRAIN in "${PRETRAINED[@]}"
     do
         for DATASET in "${DATASET_CFGS[@]}"
         do
+        echo "Running: python main_solo.py --config-path $PRETRAIN_MEDMNIST_PATH --config-name $METHOD_VIT_PATH \
+            data=$DATASET optimizer.batch_size=$BATCH_SIZE max_epochs=$EPOCHS \
+            backbone.name=$VIT_MODEL backbone.kwargs.pretrained=$PRETRAIN \
+            name='_validate-${DATASET}-vit-epochs-${EPOCHS}-pretrained-${PRETRAIN}-batch_size-${BATCH_SIZE}'"
+            
         python main_solo.py --config-path $PRETRAIN_MEDMNIST_PATH --config-name $METHOD_VIT_PATH \
             data=$DATASET optimizer.batch_size=$BATCH_SIZE max_epochs=$EPOCHS \
             backbone.name=$VIT_MODEL backbone.kwargs.pretrained=$PRETRAIN \
-            name="_debug-${DATASET}-vit-epochs-${EPOCHS}-pretrained-${PRETRAIN}-batch_size-${BATCH_SIZE}"
+            name="_validate-${DATASET}-vit-epochs-${EPOCHS}-pretrained-${PRETRAIN}-batch_size-${BATCH_SIZE}"
 
     done
 done
+echo "Validation complete"
