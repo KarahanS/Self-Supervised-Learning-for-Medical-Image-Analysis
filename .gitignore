@@ -168,3 +168,5 @@ checkpoints/
 datasets/
 **/lightning_logs/
 **/wandb/
+
+trained_models/*
