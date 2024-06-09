@@ -153,7 +153,8 @@ class Checkpointer(Callback):
             epoch = trainer.current_epoch  # type: ignore
             ckpt = self.path / self.ckpt_placeholder.format(epoch)
             trainer.save_checkpoint(ckpt)
-
+            print(f"Saved checkpoint at {ckpt}")
+            print(f'Last checkpoint: {self.last_ckpt}')
             if (
                 trainer.is_global_zero
                 and self.last_ckpt
@@ -185,17 +186,14 @@ class Checkpointer(Callback):
         epoch = trainer.current_epoch  # type: ignore
         if epoch % self.frequency == 0:
             self.save(trainer)
-
-    def on_validation_start(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> None:
-        self.initial_setup(trainer)
-        return super().on_validation_start(trainer, pl_module)
     
     def on_validation_end(self, trainer: pl.Trainer , _):
-        if self.monitor is None:
-            return
-        metric = trainer.callback_metrics.get(self.monitor)
-        if metric is not None:
-            if (self.mode == 'max' and metric > self.best_metric) or (self.mode == 'min' and metric < self.best_metric):
-                self.best_metric = metric
-                trainer.save_checkpoint(str(self.path / f'{self.cfg.name}-best_{self.monitor}.ckpt'))
+        if not trainer.sanity_checking:
+            if self.monitor is None:
+                return
+            metric = trainer.callback_metrics.get(self.monitor)
+            if metric is not None:
+                if (self.mode == 'max' and metric > self.best_metric) or (self.mode == 'min' and metric < self.best_metric):
+                    self.best_metric = metric
+                    trainer.save_checkpoint(str(self.path / f'{self.cfg.name}-best_{self.monitor}.ckpt'))
 

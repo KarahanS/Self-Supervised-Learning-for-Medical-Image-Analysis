@@ -11,14 +11,13 @@ VIT_MODEL="vit_tiny"
 BATCH_SIZE=256
 EPOCHS=800
 
-DATASET_CFGS=("dermamnist.yaml", "pneumoniamnist.yaml", "retinamnist.yaml", "breastmnist.yaml", "bloodmnist.yaml", "organamnist.yaml", "organcmnist.yaml", "organsmnist.yaml")
-EXPERIMENT_NAMES=("dermamnist", "pneumoniamnist", "retinamnist", "breastmnist", "bloodmnist", "organamnist", "organcmnist", "organsmnist")
+EXPERIMENT_NAMES=("dermamnist" "pneumoniamnist")
 PRETRAINED=("True" "False")
 
 
 for PRETRAIN in "${PRETRAINED[@]}"
 do
-    for DATASET in "${DATASET_CFGS[@]}"
+    for DATASET in "${EXPERIMENT_NAMES[@]}"
     do
         python main_solo.py --config-path $PRETRAIN_MEDMNIST_PATH --config-name $METHOD_RESNET_PATH  \
             data=$DATASET optimizer.batch_size=$BATCH_SIZE max_epochs=$EPOCHS \
@@ -30,7 +29,7 @@ done
 
 for PRETRAIN in "${PRETRAINED[@]}"
     do
-        for DATASET in "${DATASET_CFGS[@]}"
+        for DATASET in "${EXPERIMENT_NAMES[@]}"
         do
         python main_solo.py --config-path $PRETRAIN_MEDMNIST_PATH --config-name $METHOD_VIT_PATH \
             data=$DATASET optimizer.batch_size=$BATCH_SIZE max_epochs=$EPOCHS \
