@@ -43,7 +43,7 @@ checkpoint:
   dir: "trained_models"
   frequency: 1
 auto_resume:
-  enabled: True
+  enabled: False
 
 max_epochs: 400
 devices: [0,]

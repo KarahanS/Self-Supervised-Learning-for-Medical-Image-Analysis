@@ -41,7 +41,7 @@ checkpoint:
   monitor: 'val_acc1'
   mode: 'max'
 auto_resume:
-  enabled: True
+  enabled: False
 
 max_epochs: 400
 devices: [0,]
