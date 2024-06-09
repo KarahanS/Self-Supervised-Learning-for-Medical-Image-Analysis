@@ -11,7 +11,7 @@ VIT_MODEL="vit_tiny"
 BATCH_SIZE=256
 EPOCHS=800
 
-EXPERIMENT_NAMES=("dermamnist" "pneumoniamnist")
+EXPERIMENT_NAMES=("dermamnist" "pneumoniamnist" "retinamnist" "breastmnist" "bloodmnist" "organamnist" "organcmnist" "organsmnist")
 PRETRAINED=("True" "False")
 
 
