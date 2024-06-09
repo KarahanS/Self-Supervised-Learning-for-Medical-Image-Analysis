@@ -181,6 +181,8 @@ def main(cfg: DictConfig):
             logdir=os.path.join(cfg.checkpoint.dir, cfg.method),
             frequency=cfg.checkpoint.frequency,
             keep_prev=cfg.checkpoint.keep_prev,
+            monitor=cfg.checkpoint.monitor,
+            mode=cfg.checkpoint.mode,
         )
         callbacks.append(ckpt)
 

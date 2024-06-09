@@ -26,7 +26,7 @@ from pathlib import Path
 from typing import Optional, Union
 
 import lightning.pytorch as pl
-from lightning.pytorch.callbacks import Callback
+from lightning.pytorch.callbacks import Callback, ModelCheckpoint
 from omegaconf import DictConfig, OmegaConf
 
 from src.utils.misc import omegaconf_select
@@ -39,6 +39,8 @@ class Checkpointer(Callback):
         logdir: Union[str, Path] = Path("trained_models"),
         frequency: int = 1,
         keep_prev: bool = False,
+        monitor: Optional[str] = None,
+        mode: str = 'max',
     ):
         """Custom checkpointer callback that stores checkpoints in an easier to access way.
 
@@ -57,6 +59,11 @@ class Checkpointer(Callback):
         self.logdir = Path(logdir)
         self.frequency = frequency
         self.keep_prev = keep_prev
+        self.monitor = monitor
+        self.mode = mode
+        self.best_metric = float('-inf') if mode == 'max' else float('inf')
+
+
 
     @staticmethod
     def add_and_assert_specific_cfg(cfg: DictConfig) -> DictConfig:
@@ -74,6 +81,9 @@ class Checkpointer(Callback):
         cfg.checkpoint.dir = omegaconf_select(cfg, "checkpoint.dir", default="trained_models")
         cfg.checkpoint.frequency = omegaconf_select(cfg, "checkpoint.frequency", default=1)
         cfg.checkpoint.keep_prev = omegaconf_select(cfg, "checkpoint.keep_prev", default=False)
+        cfg.checkpoint.save_best = omegaconf_select(cfg, "checkpoint.save_best", default=False)
+        cfg.checkpoint.monitor = omegaconf_select(cfg, "checkpoint.monitor", default=None)
+        cfg.checkpoint.mode = omegaconf_select(cfg, "checkpoint.mode", default='max')
 
         return cfg
 
@@ -106,11 +116,13 @@ class Checkpointer(Callback):
             self.wandb_run_id = version
 
         if version is not None:
-            self.path = self.logdir / version
-            self.ckpt_placeholder = f"{self.cfg.name}-{version}" + "-ep={}.ckpt"
+            folder_name = self.cfg.name + f"-{version}"
+            self.path = self.logdir / folder_name
+            self.ckpt_placeholder = f"{self.cfg.name}" + "-curr-ep-{}.ckpt"
         else:
-            self.path = self.logdir
-            self.ckpt_placeholder = f"{self.cfg.name}" + "-ep={}.ckpt"
+            folder_name = self.cfg.name
+            self.path = self.logdir / folder_name
+            self.ckpt_placeholder = f"{self.cfg.name}" + "-curr-ep-{}.ckpt"
         self.last_ckpt: Optional[str] = None
 
         # create logging dirs
@@ -173,3 +185,17 @@ class Checkpointer(Callback):
         epoch = trainer.current_epoch  # type: ignore
         if epoch % self.frequency == 0:
             self.save(trainer)
+
+    def on_validation_start(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> None:
+        self.initial_setup(trainer)
+        return super().on_validation_start(trainer, pl_module)
+    
+    def on_validation_end(self, trainer: pl.Trainer , _):
+        if self.monitor is None:
+            return
+        metric = trainer.callback_metrics.get(self.monitor)
+        if metric is not None:
+            if (self.mode == 'max' and metric > self.best_metric) or (self.mode == 'min' and metric < self.best_metric):
+                self.best_metric = metric
+                trainer.save_checkpoint(str(self.path / f'{self.cfg.name}-best_{self.monitor}.ckpt'))
+
