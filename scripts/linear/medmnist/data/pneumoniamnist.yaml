@@ -1,7 +1,7 @@
 
 dataset: "custom"
-train_path: "/graphics/scratch2/students/kargibo/dataset/tissuemnist_64/train"
-val_path: "/graphics/scratch2/students/kargibo/dataset/tissuemnist_64/val"  # remove this if there's no validation dir
+train_path: "/graphics/scratch2/students/kargibo/dataset/pneumoniamnist_64/train"
+val_path: "/graphics/scratch2/students/kargibo/dataset/pneumoniamnist_64/val"  # remove this if there's no validation dir
 format: "image_folder" # data format, supports "image_folder", "dali" or "h5"
 num_workers: 4
 # set this to True if the dataset is not stored as subfolders for each class
