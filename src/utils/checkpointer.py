@@ -153,8 +153,6 @@ class Checkpointer(Callback):
             epoch = trainer.current_epoch  # type: ignore
             ckpt = self.path / self.ckpt_placeholder.format(epoch)
             trainer.save_checkpoint(ckpt)
-            print(f"Saved checkpoint at {ckpt}")
-            print(f'Last checkpoint: {self.last_ckpt}')
             if (
                 trainer.is_global_zero
                 and self.last_ckpt
