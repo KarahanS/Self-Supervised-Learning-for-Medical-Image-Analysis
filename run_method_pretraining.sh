@@ -8,7 +8,7 @@ METHOD_VIT_PATH=${METHOD_NAME}_vit.yaml
 RESNET_MODEL="resnet50"
 VIT_MODEL="vit_tiny"
 
-BATCH_SIZE=32
+BATCH_SIZE=256
 EPOCHS=800
 
 DATASET_CFGS=("bloodmnist.yaml" "chestmnist.yaml" "pathmnist.yaml")
@@ -23,9 +23,8 @@ do
         python main_solo.py --config-path $PRETRAIN_MEDMNIST_PATH --config-name $METHOD_RESNET_PATH  \
             data=$DATASET optimizer.batch_size=$BATCH_SIZE max_epochs=$EPOCHS \
             backbone.name=$RESNET_MODEL backbone.kwargs.pretrained=$PRETRAIN \
-            name="${METHOD_NAME}-${DATASET}-r50-epochs-${EPOCHS}-pretrained-${PRETRAIN}-batch_size-${BATCH_SIZE}"
+            name="${DATASET}-${METHOD_NAME}-${RESNET_MODEL}-epochs-${EPOCHS}-pretrained-${PRETRAIN}-batch_size-${BATCH_SIZE}"
     
-
     done
 done
 
@@ -36,7 +35,7 @@ for PRETRAIN in "${PRETRAINED[@]}"
         python main_solo.py --config-path $PRETRAIN_MEDMNIST_PATH --config-name $METHOD_VIT_PATH \
             data=$DATASET optimizer.batch_size=$BATCH_SIZE max_epochs=$EPOCHS \
             backbone.name=$VIT_MODEL backbone.kwargs.pretrained=$PRETRAIN \
-            name="${DATASET}-vit-epochs-${EPOCHS}-pretrained-${PRETRAIN}-batch_size-${BATCH_SIZE}"
+            name="${DATASET}-${METHOD_NAME}-${VIT_MODEL}-epochs-${EPOCHS}-pretrained-${PRETRAIN}-batch_size-${BATCH_SIZE}"
 
     done
 done

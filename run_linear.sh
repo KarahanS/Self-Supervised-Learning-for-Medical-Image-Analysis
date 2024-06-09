@@ -11,4 +11,4 @@ python main_linear.py --config-path $LINEAR_MEDMNIST_PATH --config-name ${METHOD
         pretrained_feature_extractor=${MODEL_CHECKPOINTS}/${SSL_CHECKPOINT_NAME} \
         data="bloodmnist.yaml"  \
         downstream_classifier.name="linear" \
-        name="${DATASET_NAME}-r50-epochs-100-pretrained-True-batch_size-64" 
+        name="${DATASET_NAME}-${METHOD_NAME}-r50-epochs-100-pretrained-True-batch_size-64" 

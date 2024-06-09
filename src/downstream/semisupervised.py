@@ -10,7 +10,7 @@
 # Evaluate the model on downstream tasks
 ###########
 
-from src.loader.medmnist_loader import MedMNISTLoader
+from src.data.loader.medmnist_loader import MedMNISTLoader
 from src.utils.enums import DatasetEnum
 from src.utils.enums import SplitType
 import torch.utils.data as data

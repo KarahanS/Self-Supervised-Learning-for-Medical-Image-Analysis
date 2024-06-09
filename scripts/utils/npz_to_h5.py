@@ -8,6 +8,7 @@ import tqdm
 import argparse
 SAVE_FORMAT = '.jpg'
 
+from medmnist import BloodMNIST
 def load_npz(dataset_path):
     """
     Load a dataset in npz format and save it in jpg format.
@@ -32,7 +33,7 @@ def medmnist_npz_to_image_folders(
     tqdm_bar = tqdm.tqdm(total=len(images), desc=f'Converting {split} images to jpg')
     for i, (image, label) in enumerate(zip(images, labels)):
         tqdm_bar.update(1)
-        image = Image.fromarray(image)
+        image = Image.fromarray(image).convert('RGB')
         image.save(os.path.join(DATASETS_DIR, save_path, split, str(label[0]), f'{i}{SAVE_FORMAT}'))
 
 def parse_args():
