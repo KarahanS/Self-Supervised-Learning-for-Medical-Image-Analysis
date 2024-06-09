@@ -39,7 +39,9 @@ def dataset_args(parser: ArgumentParser):
         "custom",
     ]
 
-    parser.add_argument("--dataset", choices=SUPPORTED_DATASETS, type=str, required=True)
+    parser.add_argument(
+        "--dataset", choices=SUPPORTED_DATASETS, type=str, required=True
+    )
 
     # dataset path
     parser.add_argument("--train_data_path", type=Path, required=True)
@@ -77,7 +79,7 @@ def augmentations_args(parser: ArgumentParser):
     parser.add_argument("--equalization_prob", type=float, default=[0.0], nargs="+")
 
     # cropping
-    parser.add_argument("--crop_size", type=int, default=[224], nargs="+")
+    parser.add_argument("--crop_size", type=int, default=[64], nargs="+")
     parser.add_argument("--min_scale", type=float, default=[0.08], nargs="+")
     parser.add_argument("--max_scale", type=float, default=[1.0], nargs="+")
 
@@ -86,7 +88,7 @@ def augmentations_args(parser: ArgumentParser):
 
 
 def linear_augmentations_args(parser: ArgumentParser):
-    parser.add_argument("--crop_size", type=int, default=[224], nargs="+")
+    parser.add_argument("--crop_size", type=int, default=[64], nargs="+")
 
 
 def custom_dataset_args(parser: ArgumentParser):

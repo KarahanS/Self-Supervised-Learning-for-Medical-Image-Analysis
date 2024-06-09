@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 import torch
 from torchmetrics import AUROC
+from src.utils.enums import MedMNISTCategory
 
 
 # https://uvadlc-notebooks.readthedocs.io/en/latest/tutorial_notebooks/tutorial17/SimCLR.html
@@ -25,7 +26,6 @@ class LogisticRegression(pl.LightningModule):
         self.save_hyperparameters()
         # Mapping from representation h to classes
         self.model = nn.Linear(feature_dim, num_classes)
-        self.auroc = AUROC(task="multiclass", num_classes=self.hparams.num_classes)
 
     def configure_optimizers(self):
         """
@@ -61,18 +61,18 @@ class LogisticRegression(pl.LightningModule):
         """
         return self.model(x)
 
-    def loss(self, y, y_pred):
+    def loss(self, y, logits):
         """
         Computes the cross-entropy loss.
 
         Args:
             y (torch.Tensor): The target labels.
-            y_pred (torch.Tensor): The predicted labels.
+            logits (torch.Tensor): The predicted labels.
 
         Returns:
             torch.Tensor: The computed loss.
         """
-        return F.cross_entropy(y_pred, y.long())
+        return F.cross_entropy(logits, y.long())
 
     def step(self, batch, mode="train"):
         """
@@ -80,18 +80,15 @@ class LogisticRegression(pl.LightningModule):
         called. Use fit() instead.
         """
         x, y = batch
+        logits = self.forward(x)
 
-        y_pred = self.forward(x)
-
-        loss = self.loss(y, y_pred)
-        acc = (y_pred.argmax(dim=-1) == y).float().mean()
-        auroc = self.auroc(y_pred, y).item()
-
-        self.log(mode + "_loss", loss)
-        self.log(mode + "_acc", acc)
-        self.log(mode + "_auroc", auroc)
+        loss = self.loss(y, logits)
+        self.get_metrics(logits, y, loss, mode)
 
         return loss
+
+    def pred(self, logits):
+        return logits.argmax(dim=-1)
 
     def training_step(self, batch, batch_index):
         """
@@ -114,6 +111,31 @@ class LogisticRegression(pl.LightningModule):
         """
         self.step(batch, mode="test")
 
+    def get_metrics(self, logits, y, loss, mode):
+        acc = (self.pred(logits) == y).float().mean()
+
+        self.log(mode + "_loss", loss)
+        self.log(mode + "_acc", acc)
+
+
+class MultiLabelLogisticRegression(LogisticRegression):
+    def loss(self, y, logits):
+        return F.binary_cross_entropy_with_logits(
+            logits, y.float()
+        )  # consider it like a binary classification for each label
+
+    def pred(self, logits):
+        # F.sigmoid(logits) > 0.5
+        return logits > 0  # element-wise sigmoid
+
+    def get_metrics(self, logits, y, loss, mode):
+        y_pred = self.pred(logits)
+        # compute label-wise classification scores, sum them up and divide by number of labels
+        acc = (y == y_pred).float().mean(dim=0).mean()
+
+        self.log(mode + "_loss", loss)
+        self.log(mode + "_acc", acc)
+
 
 def build_lr(cfg, pretrain_cfg, num_classes):
     """
@@ -125,12 +147,16 @@ def build_lr(cfg, pretrain_cfg, num_classes):
     Returns:
         LogisticRegression: The logistic regression model.
     """
-    model = LogisticRegression(
+
+    if cfg.Dataset.params.medmnist_flag == MedMNISTCategory.CHEST:
+        model_name = MultiLabelLogisticRegression
+    else:
+        model_name = LogisticRegression
+    model = model_name(
         feature_dim=pretrain_cfg.Training.Pretrain.params.output_dim,
         num_classes=num_classes,
         lr=cfg.Training.params.learning_rate,
         weight_decay=cfg.Training.params.weight_decay,
         max_epochs=cfg.Training.params.max_epochs,
     )
-
     return model

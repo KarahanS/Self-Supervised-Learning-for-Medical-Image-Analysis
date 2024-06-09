@@ -11,11 +11,11 @@ hydra:
   run:
     dir: .
 
-name: "byol-medmnist-linear"
-pretrained_feature_extractor: None      
+name: "simclr-medmnist-linear"
+pretrained_feature_extractor: None
 backbone:
   name: "resnet50"
-pretrain_method: "byol"
+pretrain_method: "simclr"
 optimizer:
   name: "sgd"
   batch_size: 256
@@ -32,7 +32,7 @@ checkpoint:
 auto_resume:
   enabled: True
 downstream_classifier:
-  name: "mlp"
+  name: "linear"
   kwargs:
     hidden_dim: 1024
 

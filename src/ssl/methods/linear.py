@@ -57,8 +57,9 @@ class LinearModel(pl.LightningModule):
         self,
         backbone: nn.Module,
         cfg: omegaconf.DictConfig,
-        loss_func: Callable = None,
+        num_classes: int,
         mixup_func: Callable = None,
+        feature_dim: int = 512,
     ):
         """Implements linear and finetune evaluation.
 
@@ -101,40 +102,31 @@ class LinearModel(pl.LightningModule):
         super().__init__()
 
         # add default values and assert that config has the basic needed settings
-        cfg = self.add_and_assert_specific_cfg(cfg)
+        self.cfg = self.add_and_assert_specific_cfg(cfg)
 
         # backbone
         self.backbone = backbone
-        if hasattr(self.backbone, "inplanes"):
-            features_dim = self.backbone.inplanes
-        else:
-            features_dim = self.backbone.num_features
 
         # classifier
         if cfg.downstream_classifier:
             if cfg.downstream_classifier.name == "mlp":
                 self.classifier = nn.Sequential(
-                    nn.Linear(
-                        features_dim, cfg.downstream_classifier.kwargs.hidden_dim
-                    ),
+                    nn.Linear(feature_dim, cfg.downstream_classifier.kwargs.hidden_dim),
                     nn.ReLU(),
                     nn.Linear(
                         cfg.downstream_classifier.kwargs.hidden_dim,
-                        cfg.data.num_classes,
+                        num_classes,
                     ),
                 )
             elif cfg.downstream_classifier.name == "linear":
-                self.classifier = nn.Linear(features_dim, cfg.data.num_classes)  # type: ignore
+                self.classifier = nn.Linear(feature_dim, num_classes)  # type: ignore
             else:
                 raise ValueError(
                     f"Classifier {cfg.downstream_classifier.name} not implemented."
                 )
+
         # mixup/cutmix function
         self.mixup_func: Callable = mixup_func
-
-        if loss_func is None:
-            loss_func = nn.CrossEntropyLoss()
-        self.loss_func = loss_func
 
         # training related
         self.max_epochs: int = cfg.max_epochs
@@ -173,7 +165,7 @@ class LinearModel(pl.LightningModule):
             for param in self.backbone.parameters():
                 param.requires_grad = False
 
-        self.num_classes = cfg.data.num_classes
+        self.num_classes = num_classes
         # keep track of validation metrics
         self.validation_step_outputs = []
 
@@ -337,14 +329,8 @@ class LinearModel(pl.LightningModule):
             Dict[str, Any]: a dict containing features and logits.
         """
 
-        if not self.no_channel_last:
-            X = X.to(memory_format=torch.channels_last)
-
-        with torch.set_grad_enabled(self.finetune):
-            feats = self.backbone(X)
-
-        logits = self.classifier(feats)
-        return {"logits": logits, "feats": feats}
+        logits = self.classifier(X)
+        return {"logits": logits, "feats": X}
 
     def shared_step(
         self, batch: Tuple, batch_idx: int
@@ -363,22 +349,19 @@ class LinearModel(pl.LightningModule):
         X, target = batch
 
         metrics = {"batch_size": X.size(0)}
-        if self.training and self.mixup_func is not None:
-            X, target = self.mixup_func(X, target)
-            out = self(X)["logits"]
-            loss = self.loss_func(out, target)
-            metrics.update({"loss": loss})
-        else:
-            out = self(X)["logits"]
+
+        out = self(X)["logits"]
+        if self.cfg.data.task == "multiclass":
             loss = F.cross_entropy(out, target)
-            acc1, acc5 = accuracy_at_k(out, target, top_k=(1, min(5, self.num_classes)))
+            acc, _ = accuracy_at_k(out, target, top_k=(1, min(5, self.num_classes)))
 
-            auroc = AUROC(num_classes=self.num_classes)
-            auroc_score = auroc(out, target)
+            metrics.update({"loss": loss, "acc": acc})
+        elif self.cfg.data.task == "multilabel":
+            loss = F.binary_cross_entropy_with_logits(out, target.float())
+            preds = out > 0.5  # sigmoid
+            acc = (target == preds).float().mean(dim=0).mean()
 
-            metrics.update(
-                {"loss": loss, "acc1": acc1, "acc5": acc5, "auroc": auroc_score}
-            )
+            metrics.update({"loss": loss, "acc": acc})
 
         return metrics
 
@@ -401,13 +384,7 @@ class LinearModel(pl.LightningModule):
 
         log = {"train_loss": out["loss"]}
         if self.mixup_func is None:
-            log.update(
-                {
-                    "train_acc1": out["acc1"],
-                    "train_acc5": out["acc5"],
-                    "train_auroc": out["auroc"],
-                }
-            )
+            log.update({"train_acc": out["acc"]})
 
         self.log_dict(log, on_epoch=True, sync_dist=True)
         return out["loss"]
@@ -430,9 +407,7 @@ class LinearModel(pl.LightningModule):
         metrics = {
             "batch_size": out["batch_size"],
             "val_loss": out["loss"],
-            "val_acc1": out["acc1"],
-            "val_acc5": out["acc5"],
-            "val_auroc": out["auroc"],
+            "val_acc": out["acc"],
         }
         self.validation_step_outputs.append(metrics)
         return metrics
@@ -444,9 +419,8 @@ class LinearModel(pl.LightningModule):
         """
 
         val_loss = weighted_mean(self.validation_step_outputs, "val_loss", "batch_size")
-        val_acc1 = weighted_mean(self.validation_step_outputs, "val_acc1", "batch_size")
-        val_acc5 = weighted_mean(self.validation_step_outputs, "val_acc5", "batch_size")
+        val_acc = weighted_mean(self.validation_step_outputs, "val_acc", "batch_size")
         self.validation_step_outputs.clear()
 
-        log = {"val_loss": val_loss, "val_acc1": val_acc1, "val_acc5": val_acc5}
+        log = {"val_loss": val_loss, "val_acc": val_acc}
         self.log_dict(log, sync_dist=True)

@@ -10,7 +10,7 @@ Dataset:
   name: MEDMNIST  # one of DatasetEnum
   params:
     medmnist_flag: PATH  # one of MedMNISTCategory
-    image_size: 64  # Which variation of MedMNIST to use. One of [28, 64, 128, 224]
+    image_size: 64  # Which variation of MedMNIST to use. One of [28, 64, 128, 64]
     download: True  # Whether to download the dataset if not found
 Training:
   checkpoints:

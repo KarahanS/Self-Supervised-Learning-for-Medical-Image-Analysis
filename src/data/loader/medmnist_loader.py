@@ -9,6 +9,7 @@ import src.utils.constants as const
 from src.utils.augmentations import get_augmentation_sequence
 from src.utils.enums import SplitType, MedMNISTCategory
 import logging
+
 ## TODO: Test data will be used for the downstream task evaluation.
 ## Use training and validation data for self-supervised learning.
 
@@ -16,11 +17,11 @@ import logging
 class MedMNISTLoader:
     def __init__(
         self,
-        augmentation_seq,
         data_flag: MedMNISTCategory,
         download,
         batch_size,
         num_workers,
+        root,
         size=28,
         views=2,
     ):
@@ -41,8 +42,9 @@ class MedMNISTLoader:
 
         try:
             # augmentation_seq = AugmentationSequenceType(augmentation_seq)
-            logging.info(augmentation_seq)
-            self.transforms = get_augmentation_sequence(size, augmentation_seq)
+            self.transforms = transforms.Compose(
+                [transforms.ToTensor(), transforms.Normalize(mean=[0.5], std=[0.5])]
+            )
         except KeyError:
             raise ValueError("Augmentation flag is invalid")
 
@@ -52,6 +54,7 @@ class MedMNISTLoader:
         self.num_workers = num_workers
         self.size = size
         self.views = views
+        self.root = root
         self.num_classes = len(self.info["label"])
 
     # call with contrastive = True for SSL, call with contrastive = False for downstream tasks
@@ -67,7 +70,7 @@ class MedMNISTLoader:
             else self.transforms
         )
 
-        dataclass = self.get_data(split, transform)
+        dataclass = self.get_data(split, self.root, transform)
         logging.info(dataclass)
         logging.info("===================")
         return data.DataLoader(
@@ -86,14 +89,14 @@ class MedMNISTLoader:
             num_workers=self.num_workers,
         )
 
-    def get_data(self, split, transform=None):
+    def get_data(self, split, root, transform=None):
         if transform is None:
             transform = self.transforms
         dataclass = self.DataClass(
             split=split.value,
             transform=transform,
             download=self.download,
-            root=const.MEDMNIST_DATA_DIR,
+            root=root,
             size=self.size,
         )
         return dataclass

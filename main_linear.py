@@ -21,6 +21,7 @@ import inspect
 import logging
 import os
 
+from torch.utils import data
 import hydra
 import torch
 import torch.nn as nn
@@ -30,15 +31,24 @@ from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch.strategies.ddp import DDPStrategy
 from omegaconf import DictConfig, OmegaConf
 from timm.data.mixup import Mixup
-from timm.loss import LabelSmoothingCrossEntropy, SoftTargetCrossEntropy
-
+from src.utils.enums import DatasetEnum, SplitType
+from src.data.loader.medmnist_loader import MedMNISTLoader
+from src.utils.setup import get_device
+from src.utils.eval import get_representations, get_auroc_metric
 from src.args.linear import parse_cfg
-from src.data.classification_dataloader import prepare_data
 from src.ssl.methods.base import BaseMethod
 from src.ssl.methods.linear import LinearModel
 from src.utils.auto_resumer import AutoResumer
 from src.utils.checkpointer import Checkpointer
 from src.utils.misc import make_contiguous
+from src.utils.enums import (
+    DatasetEnum,
+    SplitType,
+    SSLMethod,
+    DownstreamMethod,
+    LoggingTools,
+)
+from src.utils.fileutils import create_modelname, create_ckpt
 
 try:
     from src.data.dali_dataloader import ClassificationDALIDataModule
@@ -46,6 +56,30 @@ except ImportError:
     _dali_avaliable = False
 else:
     _dali_avaliable = True
+
+
+def build_data_loaders(dataset, image_size, batch_size, num_workers, root):
+
+    # get train loaders
+    logging.info("Preparing data loaders...")
+
+    loader = MedMNISTLoader(
+        data_flag=dataset,
+        download=True,
+        batch_size=batch_size,
+        size=image_size,
+        num_workers=num_workers,
+        root=root,
+    )
+
+    train_dataclass = loader.get_data(SplitType.TRAIN, root=root)
+    val_dataclass = loader.get_data(SplitType.VALIDATION, root=root)
+    test_dataclass = loader.get_data(
+        SplitType.TEST,
+        root=root,
+    )  # to be used afterwards for testing
+
+    return loader, train_dataclass, val_dataclass, test_dataclass
 
 
 @hydra.main(version_base="1.2")
@@ -65,11 +99,17 @@ def main(cfg: DictConfig):
         backbone.fc = nn.Identity()
         cifar = cfg.data.dataset in ["cifar10", "cifar100"]
         if cifar:
-            backbone.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=2, bias=False)
+            backbone.conv1 = nn.Conv2d(
+                3, 64, kernel_size=3, stride=1, padding=2, bias=False
+            )
             backbone.maxpool = nn.Identity()
 
     ckpt_path = cfg.pretrained_feature_extractor
-    assert ckpt_path.endswith(".ckpt") or ckpt_path.endswith(".pth") or ckpt_path.endswith(".pt")
+    assert (
+        ckpt_path.endswith(".ckpt")
+        or ckpt_path.endswith(".pth")
+        or ckpt_path.endswith(".pt")
+    )
 
     state = torch.load(ckpt_path, map_location="cpu")["state_dict"]
     for k in list(state.keys()):
@@ -84,7 +124,14 @@ def main(cfg: DictConfig):
     backbone.load_state_dict(state, strict=False)
     logging.info(f"Loaded {ckpt_path}")
 
-    # check if mixup or cutmix is enabled
+    loader, train_dataclass, val_dataclass, test_dataclass = build_data_loaders(
+        cfg.data.dataset,
+        image_size=cfg.data.image_size,
+        batch_size=cfg.optimizer.batch_size,
+        num_workers=cfg.data.num_workers,
+        root=cfg.data.root,
+    )
+
     mixup_func = None
     mixup_active = cfg.mixup > 0 or cfg.cutmix > 0
     if mixup_active:
@@ -97,16 +144,25 @@ def main(cfg: DictConfig):
             switch_prob=0.5,
             mode="batch",
             label_smoothing=cfg.label_smoothing,
-            num_classes=cfg.data.num_classes,
+            num_classes=loader.get_num_classes(),
         )
-        # smoothing is handled with mixup label transform
-        loss_func = SoftTargetCrossEntropy()
-    elif cfg.label_smoothing > 0:
-        loss_func = LabelSmoothingCrossEntropy(smoothing=cfg.label_smoothing)
-    else:
-        loss_func = torch.nn.CrossEntropyLoss()
+    device = get_device()
+    # data.TensorDataset(feats, labels)
+    train_feats_tuple = get_representations(backbone, train_dataclass, device)
+    val_feats_tuple = get_representations(backbone, val_dataclass, device)
+    test_feats_tuple = get_representations(backbone, test_dataclass, device)
 
-    model = LinearModel(backbone, loss_func=loss_func, mixup_func=mixup_func, cfg=cfg)
+    train_feats = data.TensorDataset(train_feats_tuple[0], train_feats_tuple[1])
+    val_feats = data.TensorDataset(val_feats_tuple[0], val_feats_tuple[1])
+    test_feats = data.TensorDataset(test_feats_tuple[0], test_feats_tuple[1])
+
+    model = LinearModel(
+        backbone,
+        mixup_func=mixup_func,
+        cfg=cfg,
+        num_classes=loader.get_num_classes(),
+        feature_dim=train_feats_tuple[0][0].shape[0],  # give feature dimensions
+    )
     make_contiguous(model)
     # can provide up to ~20% speed up
     if not cfg.performance.disable_channel_last:
@@ -116,36 +172,6 @@ def main(cfg: DictConfig):
         val_data_format = "image_folder"
     else:
         val_data_format = cfg.data.format
-
-    train_loader, val_loader = prepare_data(
-        cfg.data.dataset,
-        train_data_path=cfg.data.train_path,
-        val_data_path=cfg.data.val_path,
-        data_format=val_data_format,
-        batch_size=cfg.optimizer.batch_size,
-        num_workers=cfg.data.num_workers,
-        auto_augment=cfg.auto_augment,
-    )
-
-    if cfg.data.format == "dali":
-        assert (
-            _dali_avaliable
-        ), "Dali is not currently avaiable, please install it first with pip3 install .[dali]."
-
-        assert not cfg.auto_augment, "Auto augmentation is not supported with Dali."
-
-        dali_datamodule = ClassificationDALIDataModule(
-            dataset=cfg.data.dataset,
-            train_data_path=cfg.data.train_path,
-            val_data_path=cfg.data.val_path,
-            num_workers=cfg.data.num_workers,
-            batch_size=cfg.optimizer.batch_size,
-            data_fraction=cfg.data.fraction,
-            dali_device=cfg.dali.device,
-        )
-
-        # use normal torchvision dataloader for validation to save memory
-        dali_datamodule.val_dataloader = lambda: val_loader
 
     # 1.7 will deprecate resume_from_checkpoint, but for the moment
     # the argument is the same, but we need to pass it as ckpt_path to trainer.fit
@@ -199,23 +225,54 @@ def main(cfg: DictConfig):
     trainer_kwargs = OmegaConf.to_container(cfg)
     # we only want to pass in valid Trainer args, the rest may be user specific
     valid_kwargs = inspect.signature(Trainer.__init__).parameters
-    trainer_kwargs = {name: trainer_kwargs[name] for name in valid_kwargs if name in trainer_kwargs}
+    trainer_kwargs = {
+        name: trainer_kwargs[name] for name in valid_kwargs if name in trainer_kwargs
+    }
     trainer_kwargs.update(
         {
             "logger": wandb_logger if cfg.wandb.enabled else None,
             "callbacks": callbacks,
             "enable_checkpointing": False,
-            "strategy": DDPStrategy(find_unused_parameters=False)
-            if cfg.strategy == "ddp"
-            else cfg.strategy,
+            "strategy": (
+                DDPStrategy(find_unused_parameters=False)
+                if cfg.strategy == "ddp"
+                else cfg.strategy
+            ),
         }
     )
     trainer = Trainer(**trainer_kwargs)
 
-    if cfg.data.format == "dali":
-        trainer.fit(model, ckpt_path=ckpt_path, datamodule=dali_datamodule)
-    else:
-        trainer.fit(model, train_loader, val_loader, ckpt_path=ckpt_path)
+    # if cfg.data.format == "dali":
+    #    trainer.fit(model, ckpt_path=ckpt_path, datamodule=dali_datamodule)
+    # else:
+
+    train_loader = loader.load(train_feats, shuffle=True)
+    validation_loader = loader.load(val_feats, shuffle=False)
+    test_loader = loader.load(test_feats, shuffle=False)
+
+    trainer.fit(model, train_loader, validation_loader, ckpt_path=ckpt_path)
+    model = model.__class__.load_from_checkpoint(
+        trainer.checkpoint_callback.best_model_path
+    )
+
+    # Save model
+    # TODO: save_steps is given in config but not used
+    ckpt = create_ckpt(ckpt_path, cfg.name)
+    trainer.save_checkpoint(ckpt)
+
+    # Test model
+    test_result = trainer.test(model, dataloaders=test_loader, verbose=False)
+    test_acc = test_result[0]["test_acc"]
+
+    auroc = get_auroc_metric(
+        model, test_loader, loader.get_num_classes(), cfg.data.task
+    )
+
+    if cfg.wandb.enabled:
+        wandb_logger.log_metrics({"auroc": auroc})
+    logging.info(auroc)
+    return model, test_acc
+
 
 if __name__ == "__main__":
     main()

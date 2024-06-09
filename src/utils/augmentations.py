@@ -55,7 +55,7 @@ class AugmentationSequenceType(Enum):
         random horizontal flip > crop-and-resize > colour distortion > random
         greyscale > Gaussian blur
     Default:
-        crop-and-resize > colour distortion > Gaussian blur   # https://arxiv.org/abs/2101.05224
+        crop-and-resize > colour distortion > Gaussian blur   # https://arxiv.org/abs/2101.0564
     Novel:
         random horizontal flip > crop-and-resize > colour distortion > random
         greyscale > Gaussian blur > random histogram equalisation > random

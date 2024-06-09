@@ -2,6 +2,7 @@ import pytorch_lightning as pl
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+from src.utils.enums import MedMNISTCategory
 
 
 class MultiLayerPerceptron(pl.LightningModule):
@@ -64,7 +65,7 @@ class MultiLayerPerceptron(pl.LightningModule):
         """
         return self.model(x)
 
-    def loss(self, y, y_pred):
+    def loss(self, y, logits):
         """
         Computes the cross-entropy loss.
 
@@ -73,7 +74,7 @@ class MultiLayerPerceptron(pl.LightningModule):
             y_pred (torch.Tensor): The predicted labels.
         """
         return F.cross_entropy(
-            y_pred, y
+            logits, y
         )  # unnormalized logits (applites softmax on its own)
 
     def step(self, batch, mode="train"):
@@ -83,13 +84,10 @@ class MultiLayerPerceptron(pl.LightningModule):
         """
         x, y = batch
 
-        y_pred = self.forward(x)
+        logits = self.forward(x)
 
-        loss = self.loss(y, y_pred)
-        acc = (y_pred.argmax(dim=-1) == y).float().mean()
-
-        self.log(mode + "_loss", loss)
-        self.log(mode + "_acc", acc)
+        loss = self.loss(y, logits)
+        self.get_metrics(logits, y, loss, mode)
 
         return loss
 
@@ -114,6 +112,30 @@ class MultiLayerPerceptron(pl.LightningModule):
         """
         self.step(batch, mode="test")
 
+    def pred(self, logits):
+        return logits.argmax(dim=-1)
+
+
+class MultiLabelMultiLayerPerceptron(MultiLayerPerceptron):
+    def loss(self, y, logits):
+        return F.binary_cross_entropy_with_logits(
+            logits, y.float()
+        )  # consider it like a binary classification for each label
+
+    def pred(self, logits):
+        # F.sigmoid(logits) > 0.5
+        return logits > 0  # element-wise sigmoid
+
+    def get_metrics(self, logits, y, loss, mode):
+        y_pred = self.pred(logits)
+
+        # make sure this for loop works,
+        acc = (y == y_pred).float().mean(dim=0).mean()
+
+        self.log(mode + "_loss", loss)
+        self.log(mode + "_acc", acc)
+
+
 def build_mlp(cfg, pretrain_cfg, num_classes):
     """
     Builds the MultiLayerPerceptron model.
@@ -127,7 +149,11 @@ def build_mlp(cfg, pretrain_cfg, num_classes):
     train_params = cfg.Training.params
     ssl_params = cfg.Training.Downstream.params
 
-    model = MultiLayerPerceptron(
+    if cfg.Dataset.params.medmnist_flag == MedMNISTCategory.CHEST:
+        model_name = MultiLabelMultiLayerPerceptron
+    else:
+        model_name = MultiLayerPerceptron
+    model = model_name(
         feature_dim=pretrain_cfg.Training.Pretrain.params.output_dim,
         hidden_dim=ssl_params.hidden_dim,
         num_classes=num_classes,

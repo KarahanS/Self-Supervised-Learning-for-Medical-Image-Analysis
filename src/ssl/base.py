@@ -16,15 +16,16 @@ from src.utils.fileutils import create_modelname, create_ckpt
 from pytorch_lightning.loggers import WandbLogger, TensorBoardLogger
 import src.utils.constants as const
 import logging
-from src.data.loader.medmnist_loader import MedMNISTLoader
+from src.loader.medmnist_loader import MedMNISTLoader
 from src.utils.config.config import Config
 from src.utils.setup import get_device
-from src.utils.eval import get_representations
+from src.utils.eval import get_representations, get_auroc_metric
 import src.utils.setup as setup
 from medmnist import INFO
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger, WandbLogger
+from src.utils.enums import MedMNISTCategory
 
 # TODO : This can be done automatically! If it is a meaningful adjustment, we can create decorators for this.
 
@@ -59,8 +60,6 @@ DOWNSTREAM_BUILD_MODEL_MAP = {
 }
 
 
-
-
 class ModelWrapper:
     """
     A wrapper class for the model. This class is responsible for the following:
@@ -82,6 +81,8 @@ class ModelWrapper:
         """
         model = MODEL_BUILDER_MAP[self.ssl_method](self.cfg)
         logging.info(f"Model built successfully : {model}")
+        pytorch_total_params = sum(p.numel() for p in model.encoder.parameters())
+        logging.info(pytorch_total_params)
         return model
 
     def train_model(self):
@@ -230,10 +231,19 @@ class DownstreamModelWrapper:
         trainer.save_checkpoint(ckpt)
 
         # Test model
+        model.eval()
         test_result = trainer.test(model, dataloaders=test_loader, verbose=False)
         test_acc = test_result[0]["test_acc"]
 
-        logging.info(test_acc)
+        auroc = get_auroc_metric(
+            model,
+            test_loader,
+            self.loader.get_num_classes(),
+            self.cfg.Dataset.params.medmnist_flag,
+        )
+
+        self.logger.log_metrics({"auroc": auroc})
+        logging.info(auroc)
         return model, test_acc
 
     def load_from_checkpoint(self):

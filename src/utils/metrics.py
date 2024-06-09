@@ -20,6 +20,11 @@
 from typing import Dict, List, Sequence
 
 import torch
+from torchmetrics import AUROC
+from torchmetrics.classification import MultilabelAUROC
+from torch.utils import data
+from src.utils.enums import MedMNISTCategory
+import torch
 
 
 def accuracy_at_k(
@@ -71,3 +76,37 @@ def weighted_mean(outputs: List[Dict], key: str, batch_size_key: str) -> float:
         n += out[batch_size_key]
     value = value / n
     return value.squeeze(0)
+
+
+def get_auroc_metric(model, test_loader, num_classes, medmnist_flag):
+    """
+    Compute the AUROC (Area Under the Receiver Operating Characteristic) metric
+    for a multiclass classification task.
+
+    Args:
+        model (torch.nn.Module): -
+        test_loader (torch.utils.data.DataLoader): The data loader for the test
+            dataset used to compute the metric.
+        num_classes (int): The number of classes in the classification task.
+
+    Returns:
+        float: The AUROC metric value.
+    """
+    y_true = []
+    y_pred = []
+
+    for batch in test_loader:
+        x, y = batch
+        y_true.extend(y)
+        y_pred.extend(model(x))  # forward is called
+
+    y_true = torch.stack(y_true).squeeze()
+    y_pred = torch.stack(y_pred)
+
+    if medmnist_flag == MedMNISTCategory.CHEST:
+        # macro: Calculate score for each label and average them
+        auroc_metric = MultilabelAUROC(num_labels=num_classes, average="macro")
+        return auroc_metric(y_pred, y_true).item()
+    else:
+        auroc_metric = AUROC(task="multiclass", num_classes=num_classes)
+        return auroc_metric(y_pred, y_true).item()

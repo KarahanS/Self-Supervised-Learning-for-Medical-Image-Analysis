@@ -35,7 +35,7 @@ class MaskedAutoencoderViT(VisionTransformer):
 
     def __init__(
         self,
-        img_size=224,
+        img_size=64,
         patch_size=16,
         in_chans=3,
         embed_dim=1024,
@@ -75,7 +75,13 @@ class MaskedAutoencoderViT(VisionTransformer):
 
         self.blocks = nn.Sequential(
             *[
-                Block(embed_dim, num_heads, mlp_ratio, qkv_bias=True, norm_layer=norm_layer)
+                Block(
+                    embed_dim,
+                    num_heads,
+                    mlp_ratio,
+                    qkv_bias=True,
+                    norm_layer=norm_layer,
+                )
                 for i in range(depth)
             ]
         )
@@ -88,7 +94,9 @@ class MaskedAutoencoderViT(VisionTransformer):
         # initialization
         # initialize (and freeze) pos_embed by sin-cos embedding
         pos_embed = generate_2d_sincos_pos_embed(
-            self.pos_embed.shape[-1], int(self.patch_embed.num_patches**0.5), cls_token=True
+            self.pos_embed.shape[-1],
+            int(self.patch_embed.num_patches**0.5),
+            cls_token=True,
         )
         self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float().unsqueeze(0))
 
@@ -124,7 +132,9 @@ class MaskedAutoencoderViT(VisionTransformer):
         noise = torch.rand(N, L, device=x.device)  # noise in [0, 1]
 
         # sort noise for each sample
-        ids_shuffle = torch.argsort(noise, dim=1)  # ascend: small is keep, large is remove
+        ids_shuffle = torch.argsort(
+            noise, dim=1
+        )  # ascend: small is keep, large is remove
         ids_restore = torch.argsort(ids_shuffle, dim=1)
 
         # keep the first subset
