@@ -23,7 +23,7 @@ data:
   train_path: "./datasets"
   val_path: "datasets/imagenet100/val"
   format: "image_folder"
-  num_workers: 4
+  num_workers: 8
 augmentations:
   - rrc:
       enabled: True

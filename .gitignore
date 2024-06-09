@@ -170,3 +170,7 @@ datasets/
 **/wandb/
 
 trained_models/*
+
+
+# to me
+notes.txt

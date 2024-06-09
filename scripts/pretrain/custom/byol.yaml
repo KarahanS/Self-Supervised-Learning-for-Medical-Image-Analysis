@@ -30,7 +30,7 @@ data:
   train_path: "PATH_TO_TRAIN_DIR"
   val_path: "PATH_TO_VAL_DIR"  # remove this if there's no validation dir
   format: "dali" # data format, supports "image_folder", "dali" or "h5"
-  num_workers: 4
+  num_workers: 8
   # set this to True if the dataset is not stored as subfolders for each class
   # if no labels are provided, "h5" is not supported
   # convert a custom dataset by following `scripts/utils/convert_imgfolder_to_h5.py`

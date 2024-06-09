@@ -26,7 +26,7 @@ data:
   train_path: "datasets/imagenet100/train"
   val_path: "datasets/imagenet100/val"
   format: "dali"
-  num_workers: 4
+  num_workers: 8
 augmentations:
   - rrc:
       enabled: True

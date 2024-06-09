@@ -37,6 +37,7 @@ from src.utils.misc import (
     remove_bias_and_norm_from_weight_decay,
 )
 
+
 class LinearModel(pl.LightningModule):
     _OPTIMIZERS = {
         "sgd": torch.optim.SGD,
@@ -57,7 +58,7 @@ class LinearModel(pl.LightningModule):
         backbone: nn.Module,
         cfg: omegaconf.DictConfig,
         loss_func: Callable = None,
-        mixup_func: Callable = None
+        mixup_func: Callable = None,
     ):
         """Implements linear and finetune evaluation.
 
@@ -113,14 +114,21 @@ class LinearModel(pl.LightningModule):
         if cfg.downstream_classifier:
             if cfg.downstream_classifier.name == "mlp":
                 self.classifier = nn.Sequential(
-                    nn.Linear(features_dim, cfg.downstream_classifier.kwargs.hidden_dim),
+                    nn.Linear(
+                        features_dim, cfg.downstream_classifier.kwargs.hidden_dim
+                    ),
                     nn.ReLU(),
-                    nn.Linear(cfg.downstream_classifier.kwargs.hidden_dim, cfg.data.num_classes)
+                    nn.Linear(
+                        cfg.downstream_classifier.kwargs.hidden_dim,
+                        cfg.data.num_classes,
+                    ),
                 )
             elif cfg.downstream_classifier.name == "linear":
                 self.classifier = nn.Linear(features_dim, cfg.data.num_classes)  # type: ignore
             else:
-                raise ValueError(f"Classifier {cfg.downstream_classifier.name} not implemented.")
+                raise ValueError(
+                    f"Classifier {cfg.downstream_classifier.name} not implemented."
+                )
         # mixup/cutmix function
         self.mixup_func: Callable = mixup_func
 
@@ -192,13 +200,21 @@ class LinearModel(pl.LightningModule):
         cfg.finetune = omegaconf_select(cfg, "finetune", False)
 
         # default for acc grad batches
-        cfg.accumulate_grad_batches = omegaconf_select(cfg, "accumulate_grad_batches", 1)
+        cfg.accumulate_grad_batches = omegaconf_select(
+            cfg, "accumulate_grad_batches", 1
+        )
 
         # default parameters for the scheduler
-        cfg.scheduler.lr_decay_steps = omegaconf_select(cfg, "scheduler.lr_decay_steps", None)
+        cfg.scheduler.lr_decay_steps = omegaconf_select(
+            cfg, "scheduler.lr_decay_steps", None
+        )
         cfg.scheduler.min_lr = omegaconf_select(cfg, "scheduler.min_lr", 0.0)
-        cfg.scheduler.warmup_start_lr = omegaconf_select(cfg, "scheduler.warmup_start_lr", 3e-5)
-        cfg.scheduler.warmup_epochs = omegaconf_select(cfg, "scheduler.warmup_epochs", 10)
+        cfg.scheduler.warmup_start_lr = omegaconf_select(
+            cfg, "scheduler.warmup_start_lr", 3e-5
+        )
+        cfg.scheduler.warmup_epochs = omegaconf_select(
+            cfg, "scheduler.warmup_epochs", 10
+        )
         cfg.scheduler.interval = omegaconf_select(cfg, "scheduler.interval", "step")
 
         # default parameters for performance optimization
@@ -207,11 +223,17 @@ class LinearModel(pl.LightningModule):
             cfg, "performance.disable_channel_last", False
         )
 
-        cfg.downstream_classifier = omegaconf_select(cfg, "downstream_classifier", 'linear')
-        cfg.downstream_classifier.kwargs = omegaconf_select(cfg, "downstream_classifier.kwargs", {})
+        cfg.downstream_classifier = omegaconf_select(
+            cfg, "downstream_classifier", "linear"
+        )
+        cfg.downstream_classifier.kwargs = omegaconf_select(
+            cfg, "downstream_classifier.kwargs", {}
+        )
 
-        if cfg.downstream_classifier == 'mlp':
-            assert not omegaconf.OmegaConf.is_missing(cfg, "downstream_classifier.kwargs.hidden_dim")
+        if cfg.downstream_classifier == "mlp":
+            assert not omegaconf.OmegaConf.is_missing(
+                cfg, "downstream_classifier.kwargs.hidden_dim"
+            )
 
         return cfg
 
@@ -236,7 +258,9 @@ class LinearModel(pl.LightningModule):
                 no_weight_decay_list=self.backbone.no_weight_decay(),
                 layer_decay=self.layer_decay,
             )
-            learnable_params.append({"name": "classifier", "params": self.classifier.parameters()})
+            learnable_params.append(
+                {"name": "classifier", "params": self.classifier.parameters()}
+            )
         else:
             learnable_params = (
                 self.classifier.parameters()
@@ -267,7 +291,8 @@ class LinearModel(pl.LightningModule):
 
         if self.scheduler == "warmup_cosine":
             max_warmup_steps = (
-                self.warmup_epochs * (self.trainer.estimated_stepping_batches / self.max_epochs)
+                self.warmup_epochs
+                * (self.trainer.estimated_stepping_batches / self.max_epochs)
                 if self.scheduler_interval == "step"
                 else self.warmup_epochs
             )
@@ -281,7 +306,9 @@ class LinearModel(pl.LightningModule):
                     optimizer,
                     warmup_epochs=max_warmup_steps,
                     max_epochs=max_scheduler_steps,
-                    warmup_start_lr=self.warmup_start_lr if self.warmup_epochs > 0 else self.lr,
+                    warmup_start_lr=(
+                        self.warmup_start_lr if self.warmup_epochs > 0 else self.lr
+                    ),
                     eta_min=self.min_lr,
                 ),
                 "interval": self.scheduler_interval,
@@ -322,7 +349,7 @@ class LinearModel(pl.LightningModule):
     def shared_step(
         self, batch: Tuple, batch_idx: int
     ) -> Tuple[int, torch.Tensor, torch.Tensor, torch.Tensor]:
-        """Performs operations that are shared between the training nd validation steps.
+        """Performs operations that are shared between the training and validation steps.
 
         Args:
             batch (Tuple): a batch of images in the tensor format.
@@ -349,7 +376,9 @@ class LinearModel(pl.LightningModule):
             auroc = AUROC(num_classes=self.num_classes)
             auroc_score = auroc(out, target)
 
-            metrics.update({"loss": loss, "acc1": acc1, "acc5": acc5, "auroc": auroc_score})
+            metrics.update(
+                {"loss": loss, "acc1": acc1, "acc5": acc5, "auroc": auroc_score}
+            )
 
         return metrics
 
@@ -372,9 +401,13 @@ class LinearModel(pl.LightningModule):
 
         log = {"train_loss": out["loss"]}
         if self.mixup_func is None:
-            log.update({"train_acc1": out["acc1"], "train_acc5": out["acc5"],
-                        "train_auroc": out["auroc"]})
-
+            log.update(
+                {
+                    "train_acc1": out["acc1"],
+                    "train_acc5": out["acc5"],
+                    "train_auroc": out["auroc"],
+                }
+            )
 
         self.log_dict(log, on_epoch=True, sync_dist=True)
         return out["loss"]
