@@ -78,7 +78,7 @@ def weighted_mean(outputs: List[Dict], key: str, batch_size_key: str) -> float:
     return value.squeeze(0)
 
 
-def get_auroc_metric(model, test_loader, num_classes, medmnist_flag):
+def get_auroc_metric(model, test_loader, num_classes, task):
     """
     Compute the AUROC (Area Under the Receiver Operating Characteristic) metric
     for a multiclass classification task.
@@ -98,12 +98,12 @@ def get_auroc_metric(model, test_loader, num_classes, medmnist_flag):
     for batch in test_loader:
         x, y = batch
         y_true.extend(y)
-        y_pred.extend(model(x))  # forward is called
+        y_pred.extend(model(x)["logits"])  # forward is called - auroc works with logits
 
     y_true = torch.stack(y_true).squeeze()
     y_pred = torch.stack(y_pred)
 
-    if medmnist_flag == MedMNISTCategory.CHEST:
+    if task == "multilabel":
         # macro: Calculate score for each label and average them
         auroc_metric = MultilabelAUROC(num_labels=num_classes, average="macro")
         return auroc_metric(y_pred, y_true).item()

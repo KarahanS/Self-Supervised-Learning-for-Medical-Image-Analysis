@@ -2,7 +2,7 @@
 
 LINEAR_MEDMNIST_PATH=scripts/linear/medmnist/
 METHOD_NAME=simclr
-DATASET_NAME=chestmnist
+DATASET_NAME=pathmnist
 BACKBONE=resnet50
 MODEL_CHECKPOINTS=trained_models
 SSL_CHECKPOINT_NAME="simclr/pathmnist.yaml-simclr-resnet50-epochs-10-pretrained-True-batch_size-256-7uapkt9u/pathmnist.yaml-simclr-resnet50-epochs-10-pretrained-True-batch_size-256-best_val_acc1.ckpt"

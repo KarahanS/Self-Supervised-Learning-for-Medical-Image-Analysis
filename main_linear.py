@@ -34,7 +34,8 @@ from timm.data.mixup import Mixup
 from src.utils.enums import SplitType
 from src.data.loader.medmnist_loader import MedMNISTLoader
 from src.utils.setup import get_device
-from src.utils.eval import get_representations, get_auroc_metric
+from src.utils.eval import get_representations
+from src.utils.metrics import get_auroc_metric
 from src.args.linear import parse_cfg
 from src.ssl.methods.base import BaseMethod
 from src.ssl.methods.linear import LinearModel
@@ -141,7 +142,7 @@ def main(cfg: DictConfig):
             num_classes=loader.get_num_classes(),
         )
     device = get_device()
-    # data.TensorDataset(feats, labels)
+
     train_feats_tuple = get_representations(backbone, train_dataclass, device)
     val_feats_tuple = get_representations(backbone, val_dataclass, device)
     test_feats_tuple = get_representations(backbone, test_dataclass, device)
@@ -166,6 +167,8 @@ def main(cfg: DictConfig):
         val_data_format = "image_folder"
     else:
         val_data_format = cfg.data.format
+
+    print(ckpt_path)
 
     # 1.7 will deprecate resume_from_checkpoint, but for the moment
     # the argument is the same, but we need to pass it as ckpt_path to trainer.fit
@@ -245,11 +248,8 @@ def main(cfg: DictConfig):
     test_loader = loader.load(test_feats, shuffle=False)
 
     trainer.fit(model, train_loader, validation_loader, ckpt_path=ckpt_path)
+    # model = LinearModel.load_from_checkpoint(ckpt_path)
 
-    ckpt = create_ckpt(str(ckpt_path), str(cfg.name))
-    trainer.save_checkpoint(ckpt)
-
-    # Test model
     test_result = trainer.test(model, dataloaders=test_loader, verbose=False)
     test_acc = test_result[0]["test_acc"]
 

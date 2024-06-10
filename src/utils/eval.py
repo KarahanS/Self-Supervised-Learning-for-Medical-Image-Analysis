@@ -58,37 +58,3 @@ def get_representations(
     # Remove extra axis
     labels = labels.squeeze()
     return (feats, labels)
-
-
-def get_auroc_metric(model, test_loader, num_classes, task):
-    """
-    Compute the AUROC (Area Under the Receiver Operating Characteristic) metric
-    for a multiclass classification task.
-
-    Args:
-        model (torch.nn.Module): -
-        test_loader (torch.utils.data.DataLoader): The data loader for the test
-            dataset used to compute the metric.
-        num_classes (int): The number of classes in the classification task.
-
-    Returns:
-        float: The AUROC metric value.
-    """
-    y_true = []
-    y_pred = []
-
-    for batch in test_loader:
-        x, y = batch
-        y_true.extend(y)
-        y_pred.extend(model(x)["logits"])  # forward is called - auroc works with logits
-
-    y_true = torch.stack(y_true).squeeze()
-    y_pred = torch.stack(y_pred)
-
-    if task == "multilabel":
-        # macro: Calculate score for each label and average them
-        auroc_metric = MultilabelAUROC(num_labels=num_classes, average="macro")
-        return auroc_metric(y_pred, y_true).item()
-    else:
-        auroc_metric = AUROC(task="multiclass", num_classes=num_classes)
-        return auroc_metric(y_pred, y_true).item()

@@ -5,7 +5,6 @@ from medmnist import INFO
 
 import torch.utils.data as data
 import torchvision.transforms as transforms
-from src.utils.augmentations import get_augmentation_sequence
 from src.utils.enums import SplitType, MedMNISTCategory
 import logging
 
@@ -29,7 +28,6 @@ class MedMNISTLoader:
         Loader for MedMNIST dataset
 
         Args:
-            augmentation_seq: Augmentation sequence to use.
             data_flag: Data flag for MedMNIST dataset
             download: Whether to download the dataset if not present
             batch_size: Mini-batch size
