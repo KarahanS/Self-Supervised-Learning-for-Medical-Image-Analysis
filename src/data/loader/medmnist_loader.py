@@ -1,17 +1,17 @@
 import os
 import numpy as np
 import medmnist
-from medmnist import INFO, Evaluator
+from medmnist import INFO
 
 import torch.utils.data as data
 import torchvision.transforms as transforms
-import src.utils.constants as const
 from src.utils.augmentations import get_augmentation_sequence
 from src.utils.enums import SplitType, MedMNISTCategory
 import logging
 
-## TODO: Test data will be used for the downstream task evaluation.
-## Use training and validation data for self-supervised learning.
+
+def to_rgb(img):
+    return img.convert("RGB")
 
 
 class MedMNISTLoader:
@@ -40,13 +40,14 @@ class MedMNISTLoader:
         self.info = INFO[data_flag.__str__()]
         self.DataClass = getattr(medmnist, self.info["python_class"], size)
 
-        try:
-            # augmentation_seq = AugmentationSequenceType(augmentation_seq)
-            self.transforms = transforms.Compose(
-                [transforms.ToTensor(), transforms.Normalize(mean=[0.5], std=[0.5])]
-            )
-        except KeyError:
-            raise ValueError("Augmentation flag is invalid")
+        # augmentation_seq = AugmentationSequenceType(augmentation_seq)
+        self.transforms = transforms.Compose(
+            [
+                transforms.Lambda(to_rgb),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.5], std=[0.5]),
+            ]
+        )
 
         self.data_flag = data_flag
         self.download = download

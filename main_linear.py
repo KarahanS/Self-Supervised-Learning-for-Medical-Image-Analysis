@@ -31,7 +31,7 @@ from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch.strategies.ddp import DDPStrategy
 from omegaconf import DictConfig, OmegaConf
 from timm.data.mixup import Mixup
-from src.utils.enums import DatasetEnum, SplitType
+from src.utils.enums import SplitType
 from src.data.loader.medmnist_loader import MedMNISTLoader
 from src.utils.setup import get_device
 from src.utils.eval import get_representations, get_auroc_metric
@@ -41,14 +41,8 @@ from src.ssl.methods.linear import LinearModel
 from src.utils.auto_resumer import AutoResumer
 from src.utils.checkpointer import Checkpointer
 from src.utils.misc import make_contiguous
-from src.utils.enums import (
-    DatasetEnum,
-    SplitType,
-    SSLMethod,
-    DownstreamMethod,
-    LoggingTools,
-)
-from src.utils.fileutils import create_modelname, create_ckpt
+from src.utils.enums import SplitType
+from src.utils.fileutils import create_ckpt
 
 try:
     from src.data.dali_dataloader import ClassificationDALIDataModule
@@ -251,13 +245,8 @@ def main(cfg: DictConfig):
     test_loader = loader.load(test_feats, shuffle=False)
 
     trainer.fit(model, train_loader, validation_loader, ckpt_path=ckpt_path)
-    model = model.__class__.load_from_checkpoint(
-        trainer.checkpoint_callback.best_model_path
-    )
 
-    # Save model
-    # TODO: save_steps is given in config but not used
-    ckpt = create_ckpt(ckpt_path, cfg.name)
+    ckpt = create_ckpt(str(ckpt_path), str(cfg.name))
     trainer.save_checkpoint(ckpt)
 
     # Test model

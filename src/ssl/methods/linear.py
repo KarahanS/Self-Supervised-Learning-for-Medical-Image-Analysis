@@ -168,6 +168,7 @@ class LinearModel(pl.LightningModule):
         self.num_classes = num_classes
         # keep track of validation metrics
         self.validation_step_outputs = []
+        self.test_step_outputs = []
 
     @staticmethod
     def add_and_assert_specific_cfg(cfg: omegaconf.DictConfig) -> omegaconf.DictConfig:
@@ -411,6 +412,30 @@ class LinearModel(pl.LightningModule):
         }
         self.validation_step_outputs.append(metrics)
         return metrics
+
+    def test_step(self, batch: torch.Tensor, batch_idx: int) -> Dict[str, Any]:
+        """Performs the validation step for the linear eval.
+
+        Args:
+            batch (torch.Tensor): a batch of images in the tensor format.
+            batch_idx (int): the index of the batch.
+
+        Returns:
+            Dict[str, Any]:
+                dict with the batch_size (used for averaging),
+                the classification loss and accuracies.
+        """
+
+        out = self.shared_step(batch, batch_idx)
+
+        log = {
+            "batch_size": out["batch_size"],
+            "test_loss": out["loss"],
+            "test_acc": out["acc"],
+        }
+        self.log_dict(log, on_epoch=True, sync_dist=True)
+        self.test_step_outputs.append(log)
+        return log
 
     def on_validation_epoch_end(self):
         """Averages the losses and accuracies of all the validation batches.

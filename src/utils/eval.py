@@ -23,7 +23,7 @@ def get_representations(
         sort (bool, optional): Sort the features by labels. Defaults to True.
 
     Returns:
-        torch.utils.data.TensorDataset: Dataset containing the encoded
+        tuple: Tuple containing the encoded
             features and labels.
     """
 
@@ -46,7 +46,6 @@ def get_representations(
         # Move images to specified device
         batch_imgs = batch_imgs.to(device)
         # f(.)
-
         batch_feats = encoder(batch_imgs)
 
         # Detach tensor from current graph and move to CPU
@@ -58,14 +57,6 @@ def get_representations(
 
     # Remove extra axis
     labels = labels.squeeze()
-    # Sort images by labels
-    if sort:
-        if labels.dim() == 1:  # multiclass
-            labels, indexes = labels.sort()
-            feats = feats[indexes]
-        else:  # sort is invalid for multilabel
-            pass
-
     return (feats, labels)
 
 
@@ -89,7 +80,7 @@ def get_auroc_metric(model, test_loader, num_classes, task):
     for batch in test_loader:
         x, y = batch
         y_true.extend(y)
-        y_pred.extend(model(x))  # forward is called
+        y_pred.extend(model(x)["logits"])  # forward is called - auroc works with logits
 
     y_true = torch.stack(y_true).squeeze()
     y_pred = torch.stack(y_pred)
