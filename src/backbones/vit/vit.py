@@ -34,7 +34,7 @@ def vit_tiny(patch_size=16, **kwargs):
         num_classes=0,
         **kwargs
     )
-    model = _create_vision_transformer("vit_tiny_patch16_64", **model_kwargs)
+    model = _create_vision_transformer("vit_tiny_patch16_224", **model_kwargs)
     return model
 
 
@@ -48,7 +48,7 @@ def vit_small(patch_size=16, **kwargs):
         num_classes=0,
         **kwargs
     )
-    model = _create_vision_transformer("vit_small_patch16_64", **model_kwargs)
+    model = _create_vision_transformer("vit_small_patch16_224", **model_kwargs)
     return model
 
 
@@ -62,7 +62,7 @@ def vit_base(patch_size=16, **kwargs):
         num_classes=0,
         **kwargs
     )
-    model = _create_vision_transformer("vit_base_patch16_64", **model_kwargs)
+    model = _create_vision_transformer("vit_base_patch16_224", **model_kwargs)
     return model
 
 
@@ -76,5 +76,5 @@ def vit_large(patch_size=16, **kwargs):
         num_classes=0,
         **kwargs
     )
-    model = _create_vision_transformer("vit_large_patch16_64", **model_kwargs)
+    model = _create_vision_transformer("vit_large_patch16_224", **model_kwargs)
     return model
