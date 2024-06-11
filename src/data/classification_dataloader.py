@@ -46,7 +46,7 @@ def build_custom_pipeline():
     pipeline = {
         "T_train": transforms.Compose(
             [
-                transforms.RandomResizedCrop(size=224, scale=(0.08, 1.0)),
+                transforms.RandomResizedCrop(size=64, scale=(0.08, 1.0)),
                 transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=IMAGENET_DEFAULT_MEAN, std=IMAGENET_DEFAULT_STD),
@@ -55,7 +55,7 @@ def build_custom_pipeline():
         "T_val": transforms.Compose(
             [
                 transforms.Resize(256),  # resize shorter
-                transforms.CenterCrop(224),  # take center crop
+                transforms.CenterCrop(64),  # take center crop
                 transforms.ToTensor(),
                 transforms.Normalize(mean=IMAGENET_DEFAULT_MEAN, std=IMAGENET_DEFAULT_STD),
             ]

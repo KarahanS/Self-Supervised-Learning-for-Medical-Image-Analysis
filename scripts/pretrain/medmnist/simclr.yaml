@@ -42,7 +42,6 @@ checkpoint:
   mode: 'max'
 auto_resume:
   enabled: False
-
 max_epochs: 400
 devices: [0,]
 sync_batchnorm: True
