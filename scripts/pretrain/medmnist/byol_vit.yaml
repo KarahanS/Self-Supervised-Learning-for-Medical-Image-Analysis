@@ -20,6 +20,7 @@ backbone:
   name: "vit_tiny"
   kwargs:
     pretrained: False
+    img_size: 64
 method_kwargs:
   proj_hidden_dim: 4096
   proj_output_dim: 256
