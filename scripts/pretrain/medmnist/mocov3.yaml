@@ -42,6 +42,8 @@ checkpoint:
   enabled: True
   dir: "trained_models"
   frequency: 1
+  monitor: 'val_acc1'
+  mode: 'max'
 auto_resume:
   enabled: True
 
