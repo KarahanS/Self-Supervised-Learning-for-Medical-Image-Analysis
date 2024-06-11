@@ -43,7 +43,6 @@ from src.utils.auto_resumer import AutoResumer
 from src.utils.checkpointer import Checkpointer
 from src.utils.misc import make_contiguous
 from src.utils.enums import SplitType
-from src.utils.fileutils import create_ckpt
 
 try:
     from src.data.dali_dataloader import ClassificationDALIDataModule
@@ -151,12 +150,14 @@ def main(cfg: DictConfig):
     val_feats = data.TensorDataset(val_feats_tuple[0], val_feats_tuple[1])
     test_feats = data.TensorDataset(test_feats_tuple[0], test_feats_tuple[1])
 
+    feature_dim = feature_dim = train_feats_tuple[0][0].shape[0]
+    num_classes = loader.get_num_classes()
     model = LinearModel(
         backbone,
         mixup_func=mixup_func,
         cfg=cfg,
-        num_classes=loader.get_num_classes(),
-        feature_dim=train_feats_tuple[0][0].shape[0],  # give feature dimensions
+        num_classes=num_classes,
+        feature_dim=feature_dim,  # give feature dimensions
     )
     make_contiguous(model)
     # can provide up to ~20% speed up
@@ -167,8 +168,6 @@ def main(cfg: DictConfig):
         val_data_format = "image_folder"
     else:
         val_data_format = cfg.data.format
-
-    print(ckpt_path)
 
     # 1.7 will deprecate resume_from_checkpoint, but for the moment
     # the argument is the same, but we need to pass it as ckpt_path to trainer.fit
@@ -239,28 +238,30 @@ def main(cfg: DictConfig):
     )
     trainer = Trainer(**trainer_kwargs)
 
-    # if cfg.data.format == "dali":
-    #    trainer.fit(model, ckpt_path=ckpt_path, datamodule=dali_datamodule)
-    # else:
-
     train_loader = loader.load(train_feats, shuffle=True)
     validation_loader = loader.load(val_feats, shuffle=False)
     test_loader = loader.load(test_feats, shuffle=False)
 
     trainer.fit(model, train_loader, validation_loader, ckpt_path=ckpt_path)
-    # model = LinearModel.load_from_checkpoint(ckpt_path)
 
-    test_result = trainer.test(model, dataloaders=test_loader, verbose=False)
+    best_model = LinearModel.load_from_checkpoint(
+        checkpoint_path=ckpt.best_model_path,
+        backbone=backbone,
+        cfg=cfg,
+        num_classes=num_classes,
+        feature_dim=feature_dim,
+    )
+    test_result = trainer.test(best_model, dataloaders=test_loader, verbose=False)
     test_acc = test_result[0]["test_acc"]
 
     auroc = get_auroc_metric(
-        model, test_loader, loader.get_num_classes(), cfg.data.task
+        best_model, test_loader, loader.get_num_classes(), cfg.data.task
     )
 
     if cfg.wandb.enabled:
         wandb_logger.log_metrics({"auroc": auroc})
     logging.info(auroc)
-    return model, test_acc
+    return best_model, test_acc
 
 
 if __name__ == "__main__":

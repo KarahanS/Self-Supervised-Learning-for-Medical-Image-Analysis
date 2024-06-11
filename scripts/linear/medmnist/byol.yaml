@@ -30,7 +30,7 @@ checkpoint:
   frequency: 1
   monitor: 'val_acc'
 auto_resume:
-  enabled: True
+  enabled: False
 downstream_classifier:
   name: "mlp"
   kwargs:

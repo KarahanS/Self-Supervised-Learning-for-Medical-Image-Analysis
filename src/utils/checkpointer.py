@@ -40,7 +40,7 @@ class Checkpointer(Callback):
         frequency: int = 1,
         keep_prev: bool = False,
         monitor: Optional[str] = None,
-        mode: str = 'max',
+        mode: str = "max",
     ):
         """Custom checkpointer callback that stores checkpoints in an easier to access way.
 
@@ -61,9 +61,8 @@ class Checkpointer(Callback):
         self.keep_prev = keep_prev
         self.monitor = monitor
         self.mode = mode
-        self.best_metric = float('-inf') if mode == 'max' else float('inf')
-
-
+        self.best_metric = float("-inf") if mode == "max" else float("inf")
+        self.best_model_path = None
 
     @staticmethod
     def add_and_assert_specific_cfg(cfg: DictConfig) -> DictConfig:
@@ -77,21 +76,37 @@ class Checkpointer(Callback):
         """
 
         cfg.checkpoint = omegaconf_select(cfg, "checkpoint", default={})
-        cfg.checkpoint.enabled = omegaconf_select(cfg, "checkpoint.enabled", default=False)
-        cfg.checkpoint.dir = omegaconf_select(cfg, "checkpoint.dir", default="trained_models")
-        cfg.checkpoint.frequency = omegaconf_select(cfg, "checkpoint.frequency", default=1)
-        cfg.checkpoint.keep_prev = omegaconf_select(cfg, "checkpoint.keep_prev", default=False)
-        cfg.checkpoint.save_best = omegaconf_select(cfg, "checkpoint.save_best", default=False)
-        cfg.checkpoint.monitor = omegaconf_select(cfg, "checkpoint.monitor", default=None)
-        cfg.checkpoint.mode = omegaconf_select(cfg, "checkpoint.mode", default='max')
+        cfg.checkpoint.enabled = omegaconf_select(
+            cfg, "checkpoint.enabled", default=False
+        )
+        cfg.checkpoint.dir = omegaconf_select(
+            cfg, "checkpoint.dir", default="trained_models"
+        )
+        cfg.checkpoint.frequency = omegaconf_select(
+            cfg, "checkpoint.frequency", default=1
+        )
+        cfg.checkpoint.keep_prev = omegaconf_select(
+            cfg, "checkpoint.keep_prev", default=False
+        )
+        cfg.checkpoint.save_best = omegaconf_select(
+            cfg, "checkpoint.save_best", default=False
+        )
+        cfg.checkpoint.monitor = omegaconf_select(
+            cfg, "checkpoint.monitor", default=None
+        )
+        cfg.checkpoint.mode = omegaconf_select(cfg, "checkpoint.mode", default="max")
 
         return cfg
 
     @staticmethod
     def random_string(letter_count=4, digit_count=4):
         tmp_random = random.Random(time.time())
-        rand_str = "".join(tmp_random.choice(string.ascii_lowercase) for _ in range(letter_count))
-        rand_str += "".join(tmp_random.choice(string.digits) for _ in range(digit_count))
+        rand_str = "".join(
+            tmp_random.choice(string.ascii_lowercase) for _ in range(letter_count)
+        )
+        rand_str += "".join(
+            tmp_random.choice(string.digits) for _ in range(digit_count)
+        )
         rand_str = list(rand_str)
         tmp_random.shuffle(rand_str)
         return "".join(rand_str)
@@ -129,6 +144,8 @@ class Checkpointer(Callback):
         if trainer.is_global_zero:
             os.makedirs(self.path, exist_ok=True)
 
+        self.best_model_path = self.path / f"{self.cfg.name}-best_{self.monitor}.ckpt"
+
     def save_args(self, trainer: pl.Trainer):
         """Stores arguments into a json file.
 
@@ -140,7 +157,9 @@ class Checkpointer(Callback):
             args = OmegaConf.to_container(self.cfg)
             args["wandb_run_id"] = getattr(self, "wandb_run_id", None)
             json_path = self.path / "args.json"
-            json.dump(args, open(json_path, "w"), default=lambda o: "<not serializable>")
+            json.dump(
+                args, open(json_path, "w"), default=lambda o: "<not serializable>"
+            )
 
     def save(self, trainer: pl.Trainer):
         """Saves current checkpoint.
@@ -184,14 +203,15 @@ class Checkpointer(Callback):
         epoch = trainer.current_epoch  # type: ignore
         if epoch % self.frequency == 0:
             self.save(trainer)
-    
-    def on_validation_end(self, trainer: pl.Trainer , _):
+
+    def on_validation_end(self, trainer: pl.Trainer, _):
         if not trainer.sanity_checking:
             if self.monitor is None:
                 return
             metric = trainer.callback_metrics.get(self.monitor)
             if metric is not None:
-                if (self.mode == 'max' and metric > self.best_metric) or (self.mode == 'min' and metric < self.best_metric):
+                if (self.mode == "max" and metric > self.best_metric) or (
+                    self.mode == "min" and metric < self.best_metric
+                ):
                     self.best_metric = metric
-                    trainer.save_checkpoint(str(self.path / f'{self.cfg.name}-best_{self.monitor}.ckpt'))
-
+                    trainer.save_checkpoint(self.best_model_path)
