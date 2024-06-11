@@ -2,7 +2,9 @@
 
 import torch
 from torchmetrics import AUROC
+from torchmetrics.classification import MultilabelAUROC
 from torch.utils import data
+from src.utils.enums import MedMNISTCategory
 
 
 # make sure that the encoder doesn't have projection head attached to it
@@ -21,7 +23,7 @@ def get_representations(
         sort (bool, optional): Sort the features by labels. Defaults to True.
 
     Returns:
-        torch.utils.data.TensorDataset: Dataset containing the encoded
+        tuple: Tuple containing the encoded
             features and labels.
     """
 
@@ -45,6 +47,7 @@ def get_representations(
         batch_imgs = batch_imgs.to(device)
         # f(.)
         batch_feats = encoder(batch_imgs)
+
         # Detach tensor from current graph and move to CPU
         feats.append(batch_feats.detach().cpu())
         labels.append(batch_labels)
@@ -54,10 +57,4 @@ def get_representations(
 
     # Remove extra axis
     labels = labels.squeeze()
-
-    # Sort images by labels
-    if sort:
-        labels, indexes = labels.sort()
-        feats = feats[indexes]
-
-    return data.TensorDataset(feats, labels)
+    return (feats, labels)

@@ -34,7 +34,7 @@ def swin_tiny(window_size=7, **kwargs):
         num_classes=0,
         **kwargs,
     )
-    return _create_swin_transformer("swin_tiny_patch4_window7_224", **model_kwargs)
+    return _create_swin_transformer("swin_tiny_patch4_window7_64", **model_kwargs)
 
 
 @register_model
@@ -49,7 +49,7 @@ def swin_small(window_size=7, **kwargs):
         **kwargs,
     )
     return _create_swin_transformer(
-        "swin_small_patch4_window7_224", pretrained=False, **model_kwargs
+        "swin_small_patch4_window7_64", pretrained=False, **model_kwargs
     )
 
 
@@ -65,7 +65,7 @@ def swin_base(window_size=7, **kwargs):
         **kwargs,
     )
     return _create_swin_transformer(
-        "swin_base_patch4_window7_224", pretrained=False, **model_kwargs
+        "swin_base_patch4_window7_64", pretrained=False, **model_kwargs
     )
 
 
@@ -81,5 +81,5 @@ def swin_large(window_size=7, **kwargs):
         **kwargs,
     )
     return _create_swin_transformer(
-        "swin_large_patch4_window7_224", pretrained=False, **model_kwargs
+        "swin_large_patch4_window7_64", pretrained=False, **model_kwargs
     )

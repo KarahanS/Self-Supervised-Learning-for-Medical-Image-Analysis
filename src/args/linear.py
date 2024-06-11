@@ -30,7 +30,19 @@ _SUPPORTED_DATASETS = [
     "stl10",
     "imagenet",
     "imagenet100",
-    "custom",
+    "custom",  # custom for pretraining
+    "bloodmnist",
+    "chestmnist",
+    "dermamnist",
+    "octmnist",
+    "breastmnist",
+    "organamnist",
+    "organcmnist",
+    "pneumoniamnist",
+    "retinamnist",
+    "pathmnist",
+    "tissuemnist",
+    "organsmnist",
 ]
 
 
@@ -45,8 +57,6 @@ def add_and_assert_dataset_cfg(cfg: omegaconf.DictConfig) -> omegaconf.DictConfi
     """
 
     assert not OmegaConf.is_missing(cfg, "data.dataset")
-    assert not OmegaConf.is_missing(cfg, "data.train_path")
-    assert not OmegaConf.is_missing(cfg, "data.val_path")
 
     assert cfg.data.dataset in _SUPPORTED_DATASETS
 
@@ -141,24 +151,15 @@ def parse_cfg(cfg: omegaconf.DictConfig):
 
     # augmentation related (crop size and custom mean/std values for normalization)
     cfg.data.augmentations = omegaconf_select(cfg, "data.augmentations", {})
-    cfg.data.augmentations.crop_size = omegaconf_select(cfg, "data.augmentations.crop_size", 224)
+    cfg.data.augmentations.crop_size = omegaconf_select(
+        cfg, "data.augmentations.crop_size", 64
+    )
     cfg.data.augmentations.mean = omegaconf_select(
         cfg, "data.augmentations.mean", IMAGENET_DEFAULT_MEAN
     )
     cfg.data.augmentations.std = omegaconf_select(
         cfg, "data.augmentations.std", IMAGENET_DEFAULT_STD
     )
-
-    # extra processing
-    if cfg.data.dataset in _N_CLASSES_PER_DATASET:
-        cfg.data.num_classes = _N_CLASSES_PER_DATASET[cfg.data.dataset]
-    else:
-        # hack to maintain the current pipeline
-        # even if the custom dataset doesn't have any labels
-        cfg.data.num_classes = max(
-            1,
-            sum(entry.is_dir() for entry in os.scandir(cfg.data.train_path)),
-        )
 
     if cfg.data.format == "dali":
         assert cfg.data.dataset in ["imagenet100", "imagenet", "custom"]
@@ -171,17 +172,25 @@ def parse_cfg(cfg: omegaconf.DictConfig):
     # extra optimizer kwargs
     cfg.optimizer.kwargs = omegaconf_select(cfg, "optimizer.kwargs", {})
     if cfg.optimizer.name == "sgd":
-        cfg.optimizer.kwargs.momentum = omegaconf_select(cfg, "optimizer.kwargs.momentum", 0.9)
+        cfg.optimizer.kwargs.momentum = omegaconf_select(
+            cfg, "optimizer.kwargs.momentum", 0.9
+        )
     elif cfg.optimizer.name == "lars":
-        cfg.optimizer.kwargs.momentum = omegaconf_select(cfg, "optimizer.kwargs.momentum", 0.9)
+        cfg.optimizer.kwargs.momentum = omegaconf_select(
+            cfg, "optimizer.kwargs.momentum", 0.9
+        )
         cfg.optimizer.kwargs.eta = omegaconf_select(cfg, "optimizer.kwargs.eta", 1e-3)
-        cfg.optimizer.kwargs.clip_lr = omegaconf_select(cfg, "optimizer.kwargs.clip_lr", False)
+        cfg.optimizer.kwargs.clip_lr = omegaconf_select(
+            cfg, "optimizer.kwargs.clip_lr", False
+        )
         cfg.optimizer.kwargs.exclude_bias_n_norm = omegaconf_select(
             cfg,
             "optimizer.kwargs.exclude_bias_n_norm",
             False,
         )
     elif cfg.optimizer.name == "adamw":
-        cfg.optimizer.kwargs.betas = omegaconf_select(cfg, "optimizer.kwargs.betas", [0.9, 0.999])
+        cfg.optimizer.kwargs.betas = omegaconf_select(
+            cfg, "optimizer.kwargs.betas", [0.9, 0.999]
+        )
 
     return cfg

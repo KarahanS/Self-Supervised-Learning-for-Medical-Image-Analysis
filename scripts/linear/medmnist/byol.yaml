@@ -12,7 +12,7 @@ hydra:
     dir: .
 
 name: "byol-medmnist-linear"
-pretrained_feature_extractor: None
+pretrained_feature_extractor: None      
 backbone:
   name: "resnet50"
 pretrain_method: "byol"
@@ -28,9 +28,9 @@ checkpoint:
   enabled: True
   dir: "trained_models"
   frequency: 1
-  monitor: 'val_acc1'
+  monitor: 'val_acc'
 auto_resume:
-  enabled: True
+  enabled: False
 downstream_classifier:
   name: "mlp"
   kwargs:
