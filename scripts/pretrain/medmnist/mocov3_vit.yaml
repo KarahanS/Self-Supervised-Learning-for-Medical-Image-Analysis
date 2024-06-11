@@ -1,5 +1,3 @@
-# how to configure the augmentations
-# it's also possible to copy paste here for a finer control
 defaults:
   - _self_
   - augmentations: asymmetric.yaml
@@ -14,37 +12,35 @@ hydra:
   run:
     dir: .
 
-name: "byol-custom-dataset"
-method: "byol"
+name: "mocov3-vit-imagenet100"
+method: "mocov3"
 backbone:
-  name: "vit_tiny"
+  name: "vit_small"
   kwargs:
-    pretrained: False
+    pretrained: True
+    img_size: 64
 method_kwargs:
   proj_hidden_dim: 4096
   proj_output_dim: 256
-  pred_hidden_dim: 8192
+  pred_hidden_dim: 4096
+  temperature: 0.2
 momentum:
   base_tau: 0.99
   final_tau: 1.0
 optimizer:
   name: "adamw"
-  batch_size: 256
-  lr: 2.0e-4
-  classifier_lr: 2.0e-4
-  weight_decay: 0.05
-  kwargs:
-    betas: [0.9, 0.95]
+  batch_size: 128
+  lr: 3.0e-4
+  classifier_lr: 3.0e-4
+  weight_decay: 0.1
 scheduler:
   name: "warmup_cosine"
 checkpoint:
   enabled: True
   dir: "trained_models"
   frequency: 1
-  monitor: 'val_acc1'
-  mode: 'max'
 auto_resume:
-  enabled: False
+  enabled: True
 
 # overwrite PL stuff
 max_epochs: 400
@@ -54,3 +50,4 @@ accelerator: "gpu"
 strategy: "ddp"
 precision: "32"
 seed: 42
+

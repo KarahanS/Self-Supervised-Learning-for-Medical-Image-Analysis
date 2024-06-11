@@ -20,8 +20,8 @@ backbone:
     pretrained: False
     img_size: 64
 method_kwargs:
-  proj_hidden_dim: 512
-  proj_output_dim: 128
+  proj_hidden_dim: 2048
+  proj_output_dim: 256
   num_prototypes: 65536
   norm_last_layer: False
 momentum:
