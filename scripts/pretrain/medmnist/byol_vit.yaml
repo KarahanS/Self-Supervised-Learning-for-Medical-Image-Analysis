@@ -30,8 +30,8 @@ momentum:
 optimizer:
   name: "adamw"
   batch_size: 256
-  lr: 2.0e-4
-  classifier_lr: 2.0e-4
+  lr: 3.0e-4
+  classifier_lr: 3.0e-4
   weight_decay: 0.05
   kwargs:
     betas: [0.9, 0.95]

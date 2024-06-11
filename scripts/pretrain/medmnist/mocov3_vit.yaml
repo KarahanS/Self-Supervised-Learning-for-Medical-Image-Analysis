@@ -29,10 +29,12 @@ momentum:
   final_tau: 1.0
 optimizer:
   name: "adamw"
-  batch_size: 128
+  batch_size: 256
   lr: 3.0e-4
   classifier_lr: 3.0e-4
-  weight_decay: 0.1
+  weight_decay: 0.05
+  kwargs:
+    betas: [0.9, 0.95]
 scheduler:
   name: "warmup_cosine"
 checkpoint:

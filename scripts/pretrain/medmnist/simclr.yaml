@@ -23,15 +23,13 @@ method_kwargs:
   proj_output_dim: 512
   temperature: 0.2
 optimizer:
-  name: "lars"
-  batch_size: 128
-  lr: 0.3
-  classifier_lr: 0.1
-  weight_decay: 1e-4
+  name: "adamw"
+  batch_size: 256
+  lr: 3.0e-4
+  classifier_lr: 3.0e-4
+  weight_decay: 0.05
   kwargs:
-    clip_lr: True
-    eta: 0.02
-    exclude_bias_n_norm: True
+    betas: [0.9, 0.95]
 scheduler:
   name: "warmup_cosine"
 checkpoint:
