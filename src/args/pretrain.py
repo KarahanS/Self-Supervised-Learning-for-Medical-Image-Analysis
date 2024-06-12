@@ -5,7 +5,7 @@ from omegaconf import OmegaConf
 from src.utils.auto_resumer import AutoResumer
 from src.utils.checkpointer import Checkpointer
 from src.utils.misc import omegaconf_select
-
+from src.data.loader.medmnist_loader import MEDMNIST_DATASETS
 try:
     from src.data.dali_dataloader import PretrainDALIDataModule
 except ImportError:
@@ -20,6 +20,7 @@ except ImportError:
 else:
     _umap_available = True
 
+
 _N_CLASSES_PER_DATASET = {
     "cifar10": 10,
     "cifar100": 100,
@@ -27,6 +28,21 @@ _N_CLASSES_PER_DATASET = {
     "imagenet": 1000,
     "imagenet100": 100,
 }
+
+_N_CLASSES_MEDMNIST = {
+        "pathmnist": 9,
+        "chestmnist": 2,
+        "dermamnist": 7,
+        "octmnist": 4,
+        "pneumoniamnist": 2,
+        "retinamnist": 5,
+        "breastmnist": 2,
+        "bloodmnist": 8,
+        "tissuemnist": 8,
+        "organamnist": 11,
+        "organcmnist": 11,
+        "organsmnist": 6,
+    }
 
 _SUPPORTED_DATASETS = [
     "cifar10",
@@ -126,6 +142,8 @@ def parse_cfg(cfg: omegaconf.DictConfig):
     # extra processing
     if cfg.data.dataset in _N_CLASSES_PER_DATASET:
         cfg.data.num_classes = _N_CLASSES_PER_DATASET[cfg.data.dataset]
+    elif cfg.data.format in MEDMNIST_DATASETS:
+        cfg.data.num_classes = _N_CLASSES_MEDMNIST[cfg.data.format]
     else:
         # hack to maintain the current pipeline
         # even if the custom dataset doesn't have any labels
@@ -133,6 +151,7 @@ def parse_cfg(cfg: omegaconf.DictConfig):
             1,
             sum(entry.is_dir() for entry in os.scandir(cfg.data.train_path)),
         )
+
 
     # find number of big/small crops
     big_size = cfg.augmentations[0].crop_size

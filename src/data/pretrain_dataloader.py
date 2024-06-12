@@ -31,6 +31,7 @@ from torch.utils.data.dataset import Dataset
 from torchvision import transforms
 from torchvision.datasets import STL10, ImageFolder
 
+from src.data.loader.medmnist_loader import get_data_class, get_single_label, MEDMNIST_DATASETS
 try:
     from src.data.h5_dataset import H5Dataset
 except ImportError:
@@ -332,7 +333,6 @@ def prepare_datasets(
             train_data_path,
             split="train+unlabeled",
             download=download,
-            transform=transform,
         )
 
     elif dataset in ["imagenet", "imagenet100"]:
@@ -343,12 +343,28 @@ def prepare_datasets(
             train_dataset = dataset_with_index(ImageFolder)(train_data_path, transform)
 
     elif dataset == "custom":
-        if no_labels:
+        if data_format in MEDMNIST_DATASETS:
+            train_dataset = dataset_with_index(get_data_class(data_format))(
+                    split="train",            
+                    transform=transform,
+                    download=download,
+                    root=train_data_path,
+                    size=64,
+                    as_rgb=True,
+                    target_transform=transforms.Compose(
+                        [
+                         transforms.Lambda(get_single_label)
+                        ]
+                    )
+            )
+        elif no_labels:
             dataset_class = CustomDatasetWithoutLabels
+            train_dataset = dataset_with_index(dataset_class)(train_data_path, transform)
+
         else:
             dataset_class = ImageFolder
+            train_dataset = dataset_with_index(dataset_class)(train_data_path, transform)
 
-        train_dataset = dataset_with_index(dataset_class)(train_data_path, transform)
 
     if data_fraction > 0:
         assert data_fraction < 1, "Only use data_fraction for values smaller than 1."

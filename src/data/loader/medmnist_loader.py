@@ -8,11 +8,35 @@ import torchvision.transforms as transforms
 from src.utils.enums import SplitType, MedMNISTCategory
 import logging
 
+MEDMNIST_DATASETS = [
+    "dermamnist",
+    "octmnist",
+    "pneumoniamnist",
+    "retinamnist",
+    "pathmnist",
+    "chestmnist",
+    "organamnist",
+    "organcamnist",
+    "organsmnist",
+    "breastmnist",
+    "tissuemnist",
+    "bloodmnist",
+]
 
 def to_rgb(img):
     return img.convert("RGB")
 
+def get_data_class(data_flag):
+    info = INFO[data_flag.__str__()]
+    DataClass = getattr(medmnist, info["python_class"])
+    return DataClass
 
+def get_single_label(lbl):
+    if len(lbl) == 1:
+        return np.array(lbl[0])
+    else:
+        raise ValueError("Multiple labels detected. This is not implemented yet")
+    
 class MedMNISTLoader:
     def __init__(
         self,
