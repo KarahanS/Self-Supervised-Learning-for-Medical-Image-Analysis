@@ -11,5 +11,5 @@ python main_linear.py --config-path $LINEAR_MEDMNIST_PATH --config-name ${METHOD
         pretrained_feature_extractor=${MODEL_CHECKPOINTS}/${SSL_CHECKPOINT_NAME} \
         data="${DATASET_NAME}.yaml"  \
         downstream_classifier.name="linear" \
-        max_epochs=2 \
+        max_epochs=100 \
         name="linear-${DATASET_NAME}-${METHOD_NAME}-r50-epochs-100-pretrained-batch_size-64" \
