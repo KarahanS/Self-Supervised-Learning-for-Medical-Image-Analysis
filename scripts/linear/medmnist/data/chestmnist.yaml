@@ -1,0 +1,10 @@
+
+dataset: "chestmnist"
+root: "/graphics/scratch2/students/kargibo/dataset/medmnist"
+num_workers: 8
+image_size: 64
+task: "multilabel"
+# set this to True if the dataset is not stored as subfolders for each class
+# if no labels are provided, "h5" is not supported
+# convert a custom dataset by following `scripts/utils/convert_imgfolder_to_h5.py`
+no_labels: False

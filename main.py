@@ -26,7 +26,7 @@ def main():
 
     if cfg.Dataset.name == DatasetEnum.MIMETA:
         cfg.Dataset.params.image_size = (
-            224  # there is no other option for MIMETA dataset
+            64  # there is no other option for MIMETA dataset
         )
 
     # main can be used either for self-supervised pretraining or downstream task evaluation
