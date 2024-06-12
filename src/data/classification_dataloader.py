@@ -29,13 +29,13 @@ from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 from torchvision.datasets import STL10, ImageFolder
 
+from src.data.loader.medmnist_loader import get_data_class, get_single_label,MEDMNIST_DATASETS
 try:
     from src.data.h5_dataset import H5Dataset
 except ImportError:
     _h5_available = False
 else:
     _h5_available = True
-
 
 def build_custom_pipeline():
     """Builds augmentation pipelines for custom data.
@@ -67,6 +67,30 @@ def build_custom_pipeline():
     }
     return pipeline
 
+def build_medmnist_pipeline():
+    pipeline = {
+        "T_train": transforms.Compose(
+            [
+                transforms.RandomResizedCrop(size=64, scale=(0.08, 1.0)),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                transforms.Normalize(
+                    mean=IMAGENET_DEFAULT_MEAN, std=IMAGENET_DEFAULT_STD
+                ),
+            ]
+        ),
+        "T_val": transforms.Compose(
+            [
+                transforms.Resize(256),  # resize shorter
+                transforms.CenterCrop(64),  # take center crop
+                transforms.ToTensor(),
+                transforms.Normalize(
+                    mean=IMAGENET_DEFAULT_MEAN, std=IMAGENET_DEFAULT_STD
+                ),
+            ]
+        ),
+    }
+    return pipeline
 
 def prepare_transforms(dataset: str) -> Tuple[nn.Module, nn.Module]:
     """Prepares pre-defined train and test transformation pipelines for some datasets.
@@ -241,6 +265,34 @@ def prepare_datasets(
             assert _h5_available
             train_dataset = H5Dataset(dataset, train_data_path, T_train)
             val_dataset = H5Dataset(dataset, val_data_path, T_val)
+        elif data_format in MEDMNIST_DATASETS:
+            train_dataset = get_data_class(data_format)(
+                transform=T_train,
+                root=train_data_path,
+                download=download,
+                split="train",
+                size=64,
+                as_rgb=True,
+                target_transform=transforms.Compose(
+                    [
+                        transforms.Lambda(get_single_label)
+                    ]
+                )
+            )
+
+            val_dataset = get_data_class(data_format)(
+                transform=T_train,
+                root=val_data_path,
+                download=download,
+                split="val",
+                size=64,
+                as_rgb=True,
+                target_transform=transforms.Compose(
+                    [
+                        transforms.Lambda(get_single_label)
+                    ]
+                )
+            )
         else:
             train_dataset = ImageFolder(train_data_path, T_train)
             val_dataset = ImageFolder(val_data_path, T_val)
