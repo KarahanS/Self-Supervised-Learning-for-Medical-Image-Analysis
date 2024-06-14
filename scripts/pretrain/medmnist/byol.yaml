@@ -41,7 +41,7 @@ scheduler:
 checkpoint:
   enabled: True
   dir: "trained_models"
-  frequency: 1
+  frequency: 100
   monitor: 'val_acc1'
   mode: 'max'
 auto_resume:
