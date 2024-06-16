@@ -174,3 +174,5 @@ trained_models/*
 
 # to me
 notes.txt
+
+downstream_results.csv

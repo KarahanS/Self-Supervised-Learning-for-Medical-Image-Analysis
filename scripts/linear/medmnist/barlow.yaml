@@ -11,11 +11,11 @@ hydra:
   run:
     dir: .
 
-name: "simclr-medmnist-linear"
-pretrained_feature_extractor: None
+name: "barlow-medmnist-linear"
+pretrained_feature_extractor: None      
 backbone:
   name: "resnet50"
-pretrain_method: "simclr"
+pretrain_method: "barlow"
 optimizer:
   name: "sgd"
   batch_size: 256
@@ -32,13 +32,13 @@ checkpoint:
 auto_resume:
   enabled: False
 downstream_classifier:
-  name: "linear"
+  name: "mlp"
   kwargs:
     hidden_dim: 1024
 to_csv:
   enabled: True
   name: "downstream_results.csv"
-  
+
 # overwrite PL stuff
 max_epochs: 100
 devices: [0]
