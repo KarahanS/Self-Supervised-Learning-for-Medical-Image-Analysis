@@ -35,6 +35,9 @@ downstream_classifier:
   name: "mlp"
   kwargs:
     hidden_dim: 1024
+to_csv:
+  enabled: True
+  name: "downstream_results.csv"
 
 # overwrite PL stuff
 max_epochs: 100

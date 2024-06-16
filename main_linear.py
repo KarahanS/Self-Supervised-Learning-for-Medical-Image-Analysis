@@ -254,13 +254,23 @@ def main(cfg: DictConfig):
     test_result = trainer.test(best_model, dataloaders=test_loader, verbose=False)
     test_acc = test_result[0]["test_acc"]
 
-    auroc = get_auroc_metric(
+    test_auroc = get_auroc_metric(
         best_model, test_loader, loader.get_num_classes(), cfg.data.task
     )
 
     if cfg.wandb.enabled:
-        wandb_logger.log_metrics({"auroc": auroc})
-    logging.info(auroc)
+        wandb_logger.log_metrics({"auroc": test_auroc})
+    logging.info(test_auroc)
+
+    if cfg.to_csv.enabled:
+        csv_file = cfg.to_csv.name
+        if not csv_file.endswith(".csv"):
+            csv_file += ".csv"
+        with open(csv_file, "a") as f:
+            # write model name, cfg.downstream_classifier.name, cfg.data.dataset, test_acc, test_auroc
+            f.write(
+                f"{cfg.name},{cfg.downstream_classifier.name},{cfg.data.dataset},{test_acc},{test_auroc}\n"
+            )
     return best_model, test_acc
 
 
