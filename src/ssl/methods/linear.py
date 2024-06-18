@@ -360,7 +360,7 @@ class LinearModel(pl.LightningModule):
         elif self.cfg.data.task == "multilabel":
             loss = F.binary_cross_entropy_with_logits(out, target.float())
             preds = out > 0.5  # sigmoid
-            acc = (target == preds).float().mean(dim=0).mean()
+            acc = (target == preds).float().mean(dim=0).mean() * 100
 
             metrics.update({"loss": loss, "acc": acc})
 
