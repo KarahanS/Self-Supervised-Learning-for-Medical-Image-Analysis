@@ -19,15 +19,13 @@ find $MODEL_ROOT_DIR -type f -name "*best_val_acc1.ckpt" | while read -r model_p
     SSL_CHECKPOINT_NAME="${model_dir#${MODEL_ROOT_DIR}/}"
     SSL_CHECKPOINT_NAME="${SSL_CHECKPOINT_NAME}/$model_file"
     
-    # Define the downstream classifier types
-    for classifier in "linear" "mlp"; do
-        # Run the downstream task
-        python main_linear.py --config-path $LINEAR_MEDMNIST_PATH --config-name ${METHOD_NAME}.yaml \
-            pretrained_feature_extractor=${MODEL_ROOT_DIR}/${SSL_CHECKPOINT_NAME} \
-            data="${DATASET_NAME}.yaml"  \
-            downstream_classifier.name="${classifier}" \
-            max_epochs=100 \
-            name="${classifier}-${DATASET_NAME}-${METHOD_NAME}" \
+    # Run the downstream task
+    python main_linear.py --config-path $LINEAR_MEDMNIST_PATH --config-name ${METHOD_NAME}.yaml \
+        pretrained_feature_extractor=${MODEL_ROOT_DIR}/${SSL_CHECKPOINT_NAME} \
+        data="${DATASET_NAME}.yaml"  \
+        downstream_classifier.name="${classifier}" \
+        max_epochs=100 \
+        name="linear-${DATASET_NAME}-${METHOD_NAME}" \
         
-    done
+    
 done
