@@ -19,7 +19,7 @@ pretrain_method: "barlow"
 optimizer:
   name: "sgd"
   batch_size: 256
-  lr: 0.3
+  lr: 3.0e-2
   weight_decay: 0
 scheduler:
   name: "step"
@@ -32,7 +32,7 @@ checkpoint:
 auto_resume:
   enabled: False
 downstream_classifier:
-  name: "mlp"
+  name: "linear"
   kwargs:
     hidden_dim: 1024
 to_csv:

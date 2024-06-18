@@ -19,7 +19,7 @@ pretrain_method: "simclr"
 optimizer:
   name: "sgd"
   batch_size: 256
-  lr: 0.3
+  lr: 3.0e-2
   weight_decay: 0
 scheduler:
   name: "step"
