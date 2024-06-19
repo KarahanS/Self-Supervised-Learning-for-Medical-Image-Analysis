@@ -19,15 +19,15 @@ pretrain_method: "simclr"
 optimizer:
   name: "sgd"
   batch_size: 256
-  lr: 0.3
-  weight_decay: 0
+  lr: [0.1, 0.01, 0.001]
+  weight_decay: [0, 0.1, 0.01]
 scheduler:
   name: "step"
   lr_decay_steps: [60, 80]
 checkpoint:
   enabled: True
   dir: "trained_models"
-  frequency: 1
+  frequency: 100
   monitor: 'val_acc'
 auto_resume:
   enabled: False
@@ -35,7 +35,10 @@ downstream_classifier:
   name: "linear"
   kwargs:
     hidden_dim: 1024
-
+to_csv:
+  enabled: True
+  name: "downstream_results.csv"
+  
 # overwrite PL stuff
 max_epochs: 100
 devices: [0]
