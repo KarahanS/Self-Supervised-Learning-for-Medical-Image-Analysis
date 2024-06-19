@@ -253,6 +253,7 @@ def main(cfg: DictConfig):
             if curr_val_acc > best_val_acc:
                 best_model = curr_model
                 best_comb = (lr, wd)
+                best_val_acc = curr_val_acc
 
     end = time.time()
     length = end - start
