@@ -25,7 +25,7 @@ from torch.utils import data
 import hydra
 import torch
 import torch.nn as nn
-from lightning.pytorch import Trainer
+from lightning.pytorch import Trainer, seed_everything
 from lightning.pytorch.callbacks import LearningRateMonitor
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch.strategies.ddp import DDPStrategy
@@ -86,6 +86,8 @@ def main(cfg: DictConfig):
     OmegaConf.set_struct(cfg, False)
     cfg = parse_cfg(cfg)
 
+    seed_everything(cfg.seed)
+    
     backbone_model = BaseMethod._BACKBONES[cfg.backbone.name]
 
     # initialize backbone
