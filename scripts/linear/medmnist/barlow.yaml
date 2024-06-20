@@ -11,11 +11,11 @@ hydra:
   run:
     dir: .
 
-name: "byol-medmnist-linear"
+name: "barlow-medmnist-linear"
 pretrained_feature_extractor: None      
 backbone:
   name: "resnet50"
-pretrain_method: "byol"
+pretrain_method: "barlow"
 optimizer:
   name: "sgd"
   batch_size: 256
