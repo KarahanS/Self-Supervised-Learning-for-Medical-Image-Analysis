@@ -1,6 +1,6 @@
 defaults:
   - _self_
-  - augmentations: asymmetric.yaml
+  - augmentations: symmetric_weak.yaml
   - wandb: private.yaml
   - data: medmnist.yaml
   - override hydra/hydra_logging: disabled
@@ -12,17 +12,20 @@ hydra:
   run:
     dir: .
 
-name: "barlow_twins-imagenet100"
-method: "barlow_twins"
+name: "mocov2plus-imagenet100"
+method: "mocov2plus"
 backbone:
-  name: "vit_tiny"
+  name: "resnet50"
   kwargs:
-    pretrained: True
-    img_size: 64
+    pretrained: False
 method_kwargs:
   proj_hidden_dim: 2048
-  proj_output_dim: 2048
-  scale_loss: 0.1
+  proj_output_dim: 256
+  queue_size: 65536
+  temperature: 0.2
+momentum:
+  base_tau: 0.99
+  final_tau: 0.999
 optimizer:
   name: "adamw"
   batch_size: 256
@@ -42,10 +45,10 @@ checkpoint:
 auto_resume:
   enabled: False
 
-# overwrite PL stuff
 max_epochs: 400
-devices: [0, ]
+devices: [0,]
 sync_batchnorm: True
 accelerator: "gpu"
 strategy: "ddp"
-precision: 32
+precision: "32"
+seed: 42

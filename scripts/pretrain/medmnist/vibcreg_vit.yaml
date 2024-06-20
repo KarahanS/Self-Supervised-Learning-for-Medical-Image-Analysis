@@ -1,6 +1,6 @@
 defaults:
   - _self_
-  - augmentations: asymmetric.yaml
+  - augmentations: vicreg.yaml
   - wandb: private.yaml
   - data: medmnist.yaml
   - override hydra/hydra_logging: disabled
@@ -12,17 +12,21 @@ hydra:
   run:
     dir: .
 
-name: "barlow_twins-imagenet100"
-method: "barlow_twins"
+name: "vibcreg-imagenet100"
+method: "vibcreg"
 backbone:
   name: "vit_tiny"
   kwargs:
-    pretrained: True
+    pretrained: False
     img_size: 64
+
 method_kwargs:
   proj_hidden_dim: 2048
   proj_output_dim: 2048
-  scale_loss: 0.1
+  sim_loss_weight: 25.0
+  var_loss_weight: 25.0
+  cov_loss_weight: 200.0
+  iternorm: True
 optimizer:
   name: "adamw"
   batch_size: 256
@@ -42,10 +46,10 @@ checkpoint:
 auto_resume:
   enabled: False
 
-# overwrite PL stuff
 max_epochs: 400
-devices: [0, ]
+devices: [0,]
 sync_batchnorm: True
 accelerator: "gpu"
 strategy: "ddp"
-precision: 32
+precision: "32"
+seed: 42
