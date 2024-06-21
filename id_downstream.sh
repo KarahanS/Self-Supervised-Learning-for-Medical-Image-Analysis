@@ -5,6 +5,17 @@ LINEAR_MEDMNIST_PATH=scripts/linear/medmnist/
 MODEL_ROOT_DIR=/graphics/scratch2/students/saritas/trained_models   # CHANGE
 CHECKPOINTS_DIR=/graphics/scratch2/students/saritas/checkpoints     # CHANGE
 
+# Cease operation if CHECKPOINTS_DIR string is empty - prevent accidental deletion of files
+if [ -z "$CHECKPOINTS_DIR" ]; then
+    echo "CHECKPOINTS_DIR is empty. Ceasing operation."
+    exit 1
+fi
+
+# Print find command output
+echo "Beginning downstream task on the following checkpoints:"
+find $MODEL_ROOT_DIR -type f -name "*best_val_acc1.ckpt"
+echo -e "\n"
+
 # Recursively search for models ending with 'best_val_acc1.ckpt'
 find $MODEL_ROOT_DIR -type f -name "*best_val_acc1.ckpt" | while read -r model_path; do
 
