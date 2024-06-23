@@ -1,5 +1,5 @@
 
-dataset: "organcmnist"
+dataset: "organsmnist"
 root: "/graphics/scratch2/students/kargibo/dataset/medmnist"
 num_workers: 8
 image_size: 64
