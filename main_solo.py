@@ -206,6 +206,7 @@ def main(cfg: DictConfig):
             offline=cfg.wandb.offline,
             resume="allow" if wandb_run_id else None,
             id=wandb_run_id,
+            save_dir=os.path.join(cfg.checkpoint.dir, "wandb"),
         )
         wandb_logger.watch(model, log="gradients", log_freq=100)
         wandb_logger.log_hyperparams(OmegaConf.to_container(cfg))
