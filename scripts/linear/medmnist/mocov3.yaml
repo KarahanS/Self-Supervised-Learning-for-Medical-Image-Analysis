@@ -15,6 +15,9 @@ name: "mocov3-medmnist-linear"
 pretrained_feature_extractor: None      
 backbone:
   name: "resnet50"
+  kwargs:
+    img_size: 64
+    pretrained: False
 pretrain_method: "mocov3"
 optimizer:
   name: "sgd"

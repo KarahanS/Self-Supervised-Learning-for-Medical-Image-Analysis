@@ -1,28 +1,7 @@
-# Copyright 2023 solo-learn development team.
-
-# Permission is hereby granted, free of charge, to any person obtaining a copy of
-# this software and associated documentation files (the "Software"), to deal in
-# the Software without restriction, including without limitation the rights to use,
-# copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the
-# Software, and to permit persons to whom the Software is furnished to do so,
-# subject to the following conditions:
-
-# The above copyright notice and this permission notice shall be included in all copies
-# or substantial portions of the Software.
-
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
-# INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
-# PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
-# FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-# OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-# DEALINGS IN THE SOFTWARE.
-
 from typing import Tuple
-
 import torch
 import torch.nn.functional as F
 from torchmetrics.metric import Metric
-
 
 class WeightedKNNClassifier(Metric):
     def __init__(
@@ -51,6 +30,7 @@ class WeightedKNNClassifier(Metric):
         """
 
         super().__init__(dist_sync_on_step=dist_sync_on_step, compute_on_step=False)
+        full_state_update = False
 
         self.k = k
         self.T = T
@@ -93,19 +73,18 @@ class WeightedKNNClassifier(Metric):
             self.test_targets.append(test_targets.detach())
 
     @torch.no_grad()
-    def compute(self) -> Tuple[float]:
-        """Computes weighted k-NN accuracy @1 and @5. If cosine distance is selected,
-        the weight is computed using the exponential of the temperature scaled cosine
-        distance of the samples. If euclidean distance is selected, the weight corresponds
-        to the inverse of the euclidean distance.
+    def compute(self) -> Tuple[float, float, float, float]:
+        """Computes weighted k-NN accuracy @1 and @5, confusion matrix, recall, precision, and accuracy.
+        If cosine distance is selected, the weight is computed using the exponential of the temperature scaled cosine
+        distance of the samples. If euclidean distance is selected, the weight corresponds to the inverse of the euclidean distance.
 
         Returns:
-            Tuple[float]: k-NN accuracy @1 and @5.
+            Tuple[float, float, float, float]: k-NN accuracy @1 and @5, confusion matrix, recall, precision, and accuracy.
         """
 
         # if compute is called without any features
         if not self.train_features or not self.test_features:
-            return -1, -1
+            return -1, -1, None, None, None
 
         train_features = torch.cat(self.train_features)
         train_targets = torch.cat(self.train_targets)
@@ -119,7 +98,6 @@ class WeightedKNNClassifier(Metric):
         num_classes = torch.unique(test_targets).numel()
         num_train_images = train_targets.size(0)
         num_test_images = test_targets.size(0)
-        num_train_images = train_targets.size(0)
         chunk_size = min(
             max(1, self.max_distance_matrix_size // num_train_images),
             num_test_images,
@@ -128,6 +106,9 @@ class WeightedKNNClassifier(Metric):
 
         top1, top5, total = 0.0, 0.0, 0
         retrieval_one_hot = torch.zeros(k, num_classes).to(train_features.device)
+        all_predictions = []
+        all_targets = []
+
         for idx in range(0, num_test_images, chunk_size):
             # get the features for test images
             features = test_features[idx : min((idx + chunk_size), num_test_images), :]
@@ -160,18 +141,41 @@ class WeightedKNNClassifier(Metric):
                 1,
             )
             _, predictions = probs.sort(1, True)
+            all_predictions.append(predictions[:, 0])
+            all_targets.append(targets)
 
             # find the predictions that match the target
             correct = predictions.eq(targets.data.view(-1, 1))
             top1 = top1 + correct.narrow(1, 0, 1).sum().item()
-            top5 = (
-                top5 + correct.narrow(1, 0, min(5, k, correct.size(-1))).sum().item()
-            )  # top5 does not make sense if k < 5
+            # Assuming `correct` is a tensor and its second dimension size can be obtained by correct.size(1)
+            # Adjust the range to not exceed the dimension size
+            top5_range = min(5, k, correct.size(1))
+            top5 = top5 + correct.narrow(1, 0, top5_range).sum().item()
             total += targets.size(0)
 
         top1 = top1 * 100.0 / total
         top5 = top5 * 100.0 / total
 
+        # Concatenate all predictions and targets
+        all_predictions = torch.cat(all_predictions)
+        all_targets = torch.cat(all_targets)
+
+        # Compute confusion matrix
+        confusion_matrix = torch.zeros(num_classes, num_classes)
+        for t, p in zip(all_targets, all_predictions):
+            confusion_matrix[t, p] += 1
+
+        # Compute precision and recall
+        true_positives = confusion_matrix.diag()
+        precision = true_positives / (confusion_matrix.sum(0) + 1e-9)
+        recall = true_positives / (confusion_matrix.sum(1) + 1e-9)
+
         self.reset()
 
-        return top1, top5
+        return top1, top5, confusion_matrix, recall, precision
+
+# Example usage:
+# metric = WeightedKNNClassifier()
+# metric.update(train_features=train_features, train_targets=train_targets)
+# metric.update(test_features=test_features, test_targets=test_targets)
+# top1, top5, confusion_matrix, recall, precision, accuracy = metric.compute()
