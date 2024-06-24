@@ -5,8 +5,8 @@ KNN_MEDMNIST_PATH=scripts/knn/medmnist/
 MODEL_ROOT_DIR=/graphics/scratch2/students/kargibo/checkpoints/oguz  # CHANGE
 OUTPUT_CSV=knn_results.csv
 
-K="[1,2,3,4,5,6,7,8,9,10,11,12,20,50,100,200]"
-T="[0.07,0.1,0.2,0.5,1.0,2.0]"
+K="[1,2,3,4,5,6,7,8,9,10,15,20,25,30,50,100,150,200]"
+T="[0.07,0.1,0.2,0.5,1.0,2.0,5.0]"
 FEATURE_TYPE="[backbone]"
 DISTANCE_FX="[euclidean,cosine]"
 
@@ -43,7 +43,7 @@ find $MODEL_ROOT_DIR -type f -name "*best_val_acc1.ckpt" | while read -r model_p
     SSL_CHECKPOINT_NAME="${SSL_CHECKPOINT_NAME}/$model_file"
     
     # Run the knn task
-    python main_knn.py \
+    python -W ignore::UserWarning main_knn.py \
         --config-path $KNN_MEDMNIST_PATH \
         --config-name ${METHOD_NAME}.yaml \
         pretrained_feature_extractor=${MODEL_ROOT_DIR}/${SSL_CHECKPOINT_NAME} \

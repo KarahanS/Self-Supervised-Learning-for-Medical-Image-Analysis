@@ -59,7 +59,7 @@ def build_data_loaders(dataset, image_size, batch_size, num_workers, root):
     )
 
     train_dataclass = loader.get_data(SplitType.TRAIN, root=root)
-    val_dataclass = loader.get_data(SplitType.VAL, root=root)
+    val_dataclass = loader.get_data(SplitType.VALIDATION, root=root)
     test_dataclass = loader.get_data(
         SplitType.TEST,
         root=root,
@@ -167,25 +167,29 @@ def main(cfg: DictConfig):
                         
                         # Update the progress bar
                         pbar.update(1)
+    
+        if best_result:
+            # run the best model on the test set
+            feat_type, k, distance_fx, T, acc1, acc5, confusion_matrix, recall, precision = best_result
+            acc1, acc5, confusion_matrix, recall, precision = run_knn(
+                train_features=train_features[feat_type],
+                train_targets=train_feats_tuple[1],
+                test_features=test_features[feat_type],
+                test_targets=test_feats_tuple[1],
+                k=k,
+                T=T,
+                distance_fx=distance_fx,
+            )
+            best_result = (feat_type, k, distance_fx, T, acc1, acc5, confusion_matrix, recall, precision)
+            #print best result
+            #print(f"Best result: {best_result}")
+            save_result_to_csv(best_result, cfg)
+
+        # update the progress bar
+        pbar.update(1)
         
 
 
-    if best_result:
-        # run the best model on the test set
-        feat_type, k, distance_fx, T, acc1, acc5, confusion_matrix, recall, precision = best_result
-        acc1, acc5, confusion_matrix, recall, precision = run_knn(
-            train_features=train_features[feat_type],
-            train_targets=train_feats_tuple[1],
-            test_features=test_features[feat_type],
-            test_targets=test_feats_tuple[1],
-            k=k,
-            T=T,
-            distance_fx=distance_fx,
-        )
-        best_result = (feat_type, k, distance_fx, T, acc1, acc5, confusion_matrix, recall, precision)
-        #print best result
-        #print(f"Best result: {best_result}")
-        save_result_to_csv(best_result, cfg)
 
 
 def save_result_to_csv(result, cfg):
