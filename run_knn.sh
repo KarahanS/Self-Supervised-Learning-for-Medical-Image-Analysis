@@ -5,7 +5,7 @@ KNN_MEDMNIST_PATH=scripts/knn/medmnist/
 MODEL_ROOT_DIR=/graphics/scratch2/students/kargibo/checkpoints/oguz  # CHANGE
 OUTPUT_CSV=knn_results.csv
 
-K="[1,2,5,10,20,50,100,200]"
+K="[1,2,3,4,5,6,7,8,9,10,11,12,20,50,100,200]"
 T="[0.07,0.1,0.2,0.5,1.0,2.0]"
 FEATURE_TYPE="[backbone]"
 DISTANCE_FX="[euclidean,cosine]"

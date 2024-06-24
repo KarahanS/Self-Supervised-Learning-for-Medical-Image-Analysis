@@ -59,12 +59,13 @@ def build_data_loaders(dataset, image_size, batch_size, num_workers, root):
     )
 
     train_dataclass = loader.get_data(SplitType.TRAIN, root=root)
+    val_dataclass = loader.get_data(SplitType.VAL, root=root)
     test_dataclass = loader.get_data(
         SplitType.TEST,
         root=root,
     )  # to be used afterwards for testing
 
-    return loader, train_dataclass, test_dataclass
+    return loader, train_dataclass, val_dataclass, test_dataclass
 
 @hydra.main(version_base="1.2")
 def main(cfg: DictConfig):
@@ -90,7 +91,7 @@ def main(cfg: DictConfig):
         or ckpt_path.endswith(".pt")
     )
 
-    loader, train_dataclass, test_dataclass = build_data_loaders(
+    loader, train_dataclass, val_dataclass, test_dataclass = build_data_loaders(
         cfg.data.dataset,
         image_size=cfg.data.image_size,
         batch_size=cfg.knn.batch_size,
@@ -121,9 +122,11 @@ def main(cfg: DictConfig):
     backbone.to(device)
 
     train_feats_tuple = get_representations(backbone, train_dataclass, device)
+    val_feats_tuple = get_representations(backbone, val_dataclass, device)
     test_feats_tuple = get_representations(backbone, test_dataclass, device)
 
     train_features = {"backbone": train_feats_tuple[0]}
+    val_features = {"backbone": val_feats_tuple[0]}
     test_features = {"backbone": test_feats_tuple[0]}
 
     best_acc1 = 0
@@ -141,7 +144,7 @@ def main(cfg: DictConfig):
     else:
         total_iterations = len(cfg.knn.feature_type) * len(cfg.knn.k)
      
-
+    total_iterations = total_iterations + 1
     # Initialize the progress bar
     with tqdm(total=total_iterations, desc="Combination of different hyperparameters") as pbar:
         for feat_type in cfg.knn.feature_type:
@@ -152,8 +155,8 @@ def main(cfg: DictConfig):
                         acc1, acc5, confusion_matrix, recall, precision = run_knn(
                             train_features=train_features[feat_type],
                             train_targets=train_feats_tuple[1],
-                            test_features=test_features[feat_type],
-                            test_targets=test_feats_tuple[1],
+                            test_features=val_features[feat_type],
+                            test_targets=val_feats_tuple[1],
                             k=k,
                             T=T,
                             distance_fx=distance_fx,
@@ -164,9 +167,22 @@ def main(cfg: DictConfig):
                         
                         # Update the progress bar
                         pbar.update(1)
+        
 
 
     if best_result:
+        # run the best model on the test set
+        feat_type, k, distance_fx, T, acc1, acc5, confusion_matrix, recall, precision = best_result
+        acc1, acc5, confusion_matrix, recall, precision = run_knn(
+            train_features=train_features[feat_type],
+            train_targets=train_feats_tuple[1],
+            test_features=test_features[feat_type],
+            test_targets=test_feats_tuple[1],
+            k=k,
+            T=T,
+            distance_fx=distance_fx,
+        )
+        best_result = (feat_type, k, distance_fx, T, acc1, acc5, confusion_matrix, recall, precision)
         #print best result
         #print(f"Best result: {best_result}")
         save_result_to_csv(best_result, cfg)
