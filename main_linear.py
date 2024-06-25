@@ -87,6 +87,10 @@ def main(cfg: DictConfig):
     cfg = parse_cfg(cfg)
 
     seed_everything(cfg.seed)
+
+    if "vit" not in cfg.backbone.name:
+        cfg.backbone.kwargs.pop('img_size',None)
+        cfg.backbone.kwargs.pop('pretrained',None)
     
     backbone_model = BaseMethod._BACKBONES[cfg.backbone.name]
 

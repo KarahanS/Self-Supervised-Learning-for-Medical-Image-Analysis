@@ -1,0 +1,35 @@
+defaults:
+  - _self_
+  - data: pathmnist.yaml
+  - override hydra/hydra_logging: disabled
+  - override hydra/job_logging: disabled
+
+# disable hydra outputs
+hydra:
+  output_subdir: null
+  run:
+    dir: .
+
+name: "dino-medmnist-knn"
+pretrained_feature_extractor: None      
+backbone:
+  name: "resnet50"
+  kwargs:
+    img_size: 64
+    pretrained: False
+pretrain_method: "dino"
+
+data:
+  dataset: pathmnist
+  image_size: 224
+  root: "./datasets"
+  num_classes: 100
+
+knn:
+  k: [1, 2, 5, 10, 20, 50, 100, 200]
+  T: [0.01, 0.02, 0.05, 0.07, 0.1, 0.2, 0.5, 1]
+  feature_type: ["backbone"]
+  distance_fx: ["euclidean", "cosine"]
+  batch_size: 256
+
+output_csv: "knn_results.csv"

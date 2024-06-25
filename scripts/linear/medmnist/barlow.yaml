@@ -15,6 +15,9 @@ name: "barlow-medmnist-linear"
 pretrained_feature_extractor: None      
 backbone:
   name: "resnet50"
+  kwargs:
+    img_size: 64
+    pretrained: False
 pretrain_method: "barlow"
 optimizer:
   name: "sgd"

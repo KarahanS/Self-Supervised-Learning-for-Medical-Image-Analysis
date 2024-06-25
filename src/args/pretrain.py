@@ -41,7 +41,7 @@ _N_CLASSES_MEDMNIST = {
         "tissuemnist": 8,
         "organamnist": 11,
         "organcmnist": 11,
-        "organsmnist": 6,
+        "organsmnist": 11,
     }
 
 _SUPPORTED_DATASETS = [

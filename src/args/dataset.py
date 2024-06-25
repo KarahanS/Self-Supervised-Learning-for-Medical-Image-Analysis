@@ -37,6 +37,18 @@ def dataset_args(parser: ArgumentParser):
         "imagenet",
         "imagenet100",
         "custom",
+        "bloodmnist",
+        "chestmnist",
+        "dermamnist",
+        "octmnist",
+        "breastmnist",
+        "organamnist",
+        "organcmnist",
+        "pneumoniamnist",
+        "retinamnist",
+        "pathmnist",
+        "tissuemnist",
+        "organsmnist",
     ]
 
     parser.add_argument(
