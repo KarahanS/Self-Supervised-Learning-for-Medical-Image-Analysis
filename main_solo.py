@@ -28,7 +28,9 @@ from lightning.pytorch.loggers.wandb import WandbLogger
 from lightning.pytorch.strategies.ddp import DDPStrategy
 from omegaconf import DictConfig, OmegaConf
 from src.args.pretrain import parse_cfg
-from src.data.classification_dataloader import prepare_data as prepare_data_classification
+from src.data.classification_dataloader import (
+    prepare_data as prepare_data_classification,
+)
 from src.data.pretrain_dataloader import (
     FullTransformPipeline,
     NCropAugmentation,
@@ -42,7 +44,10 @@ from src.utils.checkpointer import Checkpointer
 from src.utils.misc import make_contiguous, omegaconf_select
 
 try:
-    from src.data.dali_dataloader import PretrainDALIDataModule, build_transform_pipeline_dali
+    from src.data.dali_dataloader import (
+        PretrainDALIDataModule,
+        build_transform_pipeline_dali,
+    )
 except ImportError:
     _dali_avaliable = False
 else:
@@ -78,7 +83,9 @@ def main(cfg: DictConfig):
         model = model.to(memory_format=torch.channels_last)
 
     # validation dataloader for when it is available
-    if cfg.data.dataset == "custom" and (cfg.data.no_labels or cfg.data.val_path is None):
+    if cfg.data.dataset == "custom" and (
+        cfg.data.no_labels or cfg.data.val_path is None
+    ):
         val_loader = None
     elif cfg.data.dataset in ["imagenet100", "imagenet"] and cfg.data.val_path is None:
         val_loader = None
@@ -133,7 +140,8 @@ def main(cfg: DictConfig):
         for aug_cfg in cfg.augmentations:
             pipelines.append(
                 NCropAugmentation(
-                    build_transform_pipeline(cfg.data.dataset, aug_cfg), aug_cfg.num_crops
+                    build_transform_pipeline(cfg.data.dataset, aug_cfg),
+                    aug_cfg.num_crops,
                 )
             )
         transform = FullTransformPipeline(pipelines)
@@ -151,7 +159,9 @@ def main(cfg: DictConfig):
             data_fraction=cfg.data.fraction,
         )
         train_loader = prepare_dataloader(
-            train_dataset, batch_size=cfg.optimizer.batch_size, num_workers=cfg.data.num_workers
+            train_dataset,
+            batch_size=cfg.optimizer.batch_size,
+            num_workers=cfg.data.num_workers,
         )
 
     # 1.7 will deprecate resume_from_checkpoint, but for the moment
@@ -206,7 +216,7 @@ def main(cfg: DictConfig):
             offline=cfg.wandb.offline,
             resume="allow" if wandb_run_id else None,
             id=wandb_run_id,
-            save_dir=os.path.join(cfg.checkpoint.dir, "wandb"),
+            # save_dir=os.path.join(cfg.checkpoint.dir, "wandb"),
         )
         wandb_logger.watch(model, log="gradients", log_freq=100)
         wandb_logger.log_hyperparams(OmegaConf.to_container(cfg))
@@ -218,15 +228,19 @@ def main(cfg: DictConfig):
     trainer_kwargs = OmegaConf.to_container(cfg)
     # we only want to pass in valid Trainer args, the rest may be user specific
     valid_kwargs = inspect.signature(Trainer.__init__).parameters
-    trainer_kwargs = {name: trainer_kwargs[name] for name in valid_kwargs if name in trainer_kwargs}
+    trainer_kwargs = {
+        name: trainer_kwargs[name] for name in valid_kwargs if name in trainer_kwargs
+    }
     trainer_kwargs.update(
         {
             "logger": wandb_logger if cfg.wandb.enabled else None,
             "callbacks": callbacks,
             "enable_checkpointing": False,
-            "strategy": DDPStrategy(find_unused_parameters=False)
-            if cfg.strategy == "ddp"
-            else cfg.strategy,
+            "strategy": (
+                DDPStrategy(find_unused_parameters=False)
+                if cfg.strategy == "ddp"
+                else cfg.strategy
+            ),
         }
     )
     trainer = Trainer(**trainer_kwargs)
