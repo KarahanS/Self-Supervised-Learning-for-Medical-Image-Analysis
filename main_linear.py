@@ -87,7 +87,11 @@ def main(cfg: DictConfig):
     cfg = parse_cfg(cfg)
 
     seed_everything(cfg.seed)
-    
+
+    if "vit" not in cfg.backbone.name:
+        cfg.backbone.kwargs.pop("img_size", None)
+        cfg.backbone.kwargs.pop("pretrained", None)
+
     backbone_model = BaseMethod._BACKBONES[cfg.backbone.name]
 
     # initialize backbone
@@ -386,7 +390,7 @@ def main(cfg: DictConfig):
             # Write the model data
             f.write(
                 f"{cfg.name},{cfg.downstream_classifier.name},{cfg.data.dataset},{lr},{wd},{test_acc},{test_auroc}\n"
-            )
+            )  # CHANGE THE ORDER FOR OOD
 
 
 if __name__ == "__main__":
