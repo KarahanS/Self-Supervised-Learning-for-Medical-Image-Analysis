@@ -174,9 +174,8 @@ trained_models/*
 
 # to me
 notes.txt
-downstream_results.csv
+*.csv
 
 # ignore custom scripts
-custom_id_downstream.sh
-custom_run_method_pretraining.sh
+custom*.sh
 .nfs*
