@@ -1,16 +1,12 @@
-import json
 import os
 from pathlib import Path
 from typing import Tuple
 
 import torch
-import numpy as np
 import torch.nn as nn
-from torch.utils import data
 from src.ssl.methods.base import BaseMethod
 from src.utils.setup import get_device
 from omegaconf import DictConfig, OmegaConf
-from torch.utils.data import DataLoader, TensorDataset
 from tqdm import tqdm
 from src.data.classification_dataloader import prepare_data as prepare_data_classification
 from src.data.loader.medmnist_loader import MedMNISTLoader, SplitType
