@@ -23,9 +23,12 @@ import os
 
 from torch.utils import data
 import hydra
+import numpy as np
 import torch
 import torch.nn as nn
+from tqdm import tqdm
 from lightning.pytorch import Trainer, seed_everything
+from src.downstream.semisupervised import sample_balanced_data
 from lightning.pytorch.callbacks import LearningRateMonitor
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch.strategies.ddp import DDPStrategy
@@ -33,6 +36,7 @@ from omegaconf import DictConfig, OmegaConf
 from timm.data.mixup import Mixup
 from src.utils.enums import SplitType
 from src.data.loader.medmnist_loader import MedMNISTLoader
+from torch.utils.data import Subset
 from src.utils.setup import get_device
 from src.utils.eval import get_representations
 from src.utils.metrics import get_auroc_metric
@@ -54,7 +58,7 @@ else:
     _dali_avaliable = True
 
 
-def build_data_loaders(dataset, image_size, batch_size, num_workers, root):
+def build_data_loaders(dataset, image_size, batch_size, num_workers, root, train_fraction=1.0):
 
     # get train loaders
     logging.info("Preparing data loaders...")
@@ -70,12 +74,15 @@ def build_data_loaders(dataset, image_size, batch_size, num_workers, root):
 
     train_dataclass = loader.get_data(SplitType.TRAIN, root=root)
     val_dataclass = loader.get_data(SplitType.VALIDATION, root=root)
-    test_dataclass = loader.get_data(
-        SplitType.TEST,
-        root=root,
-    )  # to be used afterwards for testing
+    test_dataclass = loader.get_data(SplitType.TEST, root=root)  # to be used afterwards for testing
+
+    # # adjust the size of the train dataset in accordance with the train_fraction of the original size
+    if train_fraction < 1.0:
+        train_dataclass = sample_balanced_data(train_dataclass, train_fraction)
+        logging.info(f"Training on {len(train_dataclass)} samples on fraction {train_fraction}")
 
     return loader, train_dataclass, val_dataclass, test_dataclass
+
 
 
 @hydra.main(version_base="1.2")
@@ -133,8 +140,9 @@ def main(cfg: DictConfig):
         batch_size=cfg.optimizer.batch_size,
         num_workers=cfg.data.num_workers,
         root=cfg.data.root,
+        train_fraction=cfg.data.train_fraction,
     )
-
+    
     mixup_func = None
     mixup_active = cfg.mixup > 0 or cfg.cutmix > 0
     if mixup_active:
@@ -150,6 +158,8 @@ def main(cfg: DictConfig):
             num_classes=loader.get_num_classes(),
         )
     device = get_device()
+
+    print("Training on", len(train_dataclass), "samples on fraction", cfg.data.train_fraction)
 
     train_feats_tuple = get_representations(backbone, train_dataclass, device)
     val_feats_tuple = get_representations(backbone, val_dataclass, device)
@@ -167,99 +177,103 @@ def main(cfg: DictConfig):
     best_comb = (None, None)
     start = time.time()
 
-    for lr in cfg.optimizer.lr:
-        for wd in cfg.optimizer.weight_decay:
-            cfg_copy = copy.deepcopy(cfg)
-            backbone_copy = copy.deepcopy(
-                backbone
-            )  # to avoid finetuning same backbone if cfg.finetune = True
-            cfg_copy.optimizer.lr = lr
-            cfg_copy.optimizer.weight_decay = wd
-            model = LinearModel(
-                backbone_copy,
-                cfg=cfg_copy,
-                num_classes=num_classes,
-                mixup_func=mixup_func,
-                feature_dim=feature_dim,  # give feature dimensions
-            )
-
-            make_contiguous(model)
-            # can provide up to ~20% speed up
-            if not cfg_copy.performance.disable_channel_last:
-                model = model.to(memory_format=torch.channels_last)
-
-                ckpt_path, wandb_run_id = None, None
-            if cfg_copy.auto_resume.enabled and cfg_copy.resume_from_checkpoint is None:
-                auto_resumer = AutoResumer(
-                    checkpoint_dir=os.path.join(cfg_copy.checkpoint.dir, "linear"),
-                    max_hours=cfg_copy.auto_resume.max_hours,
+    # add tqdm here
+    total_comb = len(cfg.optimizer.lr) * len(cfg.optimizer.weight_decay)
+    with tqdm(total=total_comb, desc="Grid search", position=0) as pbar:
+        for lr in cfg.optimizer.lr:
+            for wd in cfg.optimizer.weight_decay:
+                cfg_copy = copy.deepcopy(cfg)
+                backbone_copy = copy.deepcopy(
+                    backbone
+                )  # to avoid finetuning same backbone if cfg.finetune = True
+                cfg_copy.optimizer.lr = lr
+                cfg_copy.optimizer.weight_decay = wd
+                model = LinearModel(
+                    backbone_copy,
+                    cfg=cfg_copy,
+                    num_classes=num_classes,
+                    mixup_func=mixup_func,
+                    feature_dim=feature_dim,  # give feature dimensions
                 )
-                resume_from_checkpoint, wandb_run_id = auto_resumer.find_checkpoint(
-                    cfg_copy
-                )
-                if resume_from_checkpoint is not None:
-                    print(
-                        "Resuming from previous checkpoint that matches specifications:",
-                        f"'{resume_from_checkpoint}'",
+
+                make_contiguous(model)
+                # can provide up to ~20% speed up
+                if not cfg_copy.performance.disable_channel_last:
+                    model = model.to(memory_format=torch.channels_last)
+
+                    ckpt_path, wandb_run_id = None, None
+                if cfg_copy.auto_resume.enabled and cfg_copy.resume_from_checkpoint is None:
+                    auto_resumer = AutoResumer(
+                        checkpoint_dir=os.path.join(cfg_copy.checkpoint.dir, "linear"),
+                        max_hours=cfg_copy.auto_resume.max_hours,
                     )
-                    ckpt_path = resume_from_checkpoint
-            elif cfg_copy.resume_from_checkpoint is not None:
-                ckpt_path = cfg_copy.resume_from_checkpoint
-                del cfg_copy.resume_from_checkpoint
-            if cfg_copy.data.format == "dali":
-                val_data_format = "image_folder"
-            else:
-                val_data_format = cfg_copy.data.format
-            callbacks = []
-            if cfg_copy.checkpoint.enabled:
-                ckpt = Checkpointer(
-                    cfg_copy,
-                    logdir=os.path.join(cfg_copy.checkpoint.dir, "linear"),
-                    frequency=cfg_copy.checkpoint.frequency,
-                    keep_prev=cfg_copy.checkpoint.keep_prev,
-                    monitor=cfg_copy.checkpoint.monitor,
-                    mode=cfg_copy.checkpoint.mode,
-                )
-                callbacks.append(ckpt)
-            trainer_kwargs = OmegaConf.to_container(cfg_copy)
-            # we only want to pass in valid Trainer args, the rest may be user specific
-            valid_kwargs = inspect.signature(Trainer.__init__).parameters
-            trainer_kwargs = {
-                name: trainer_kwargs[name]
-                for name in valid_kwargs
-                if name in trainer_kwargs
-            }
-            trainer_kwargs.update(
-                {
-                    "logger": None,
-                    "callbacks": callbacks,
-                    "enable_checkpointing": False,
-                    "strategy": (
-                        DDPStrategy(find_unused_parameters=False)
-                        if cfg.strategy == "ddp"
-                        else cfg.strategy
-                    ),
+                    resume_from_checkpoint, wandb_run_id = auto_resumer.find_checkpoint(
+                        cfg_copy
+                    )
+                    if resume_from_checkpoint is not None:
+                        print(
+                            "Resuming from previous checkpoint that matches specifications:",
+                            f"'{resume_from_checkpoint}'",
+                        )
+                        ckpt_path = resume_from_checkpoint
+                elif cfg_copy.resume_from_checkpoint is not None:
+                    ckpt_path = cfg_copy.resume_from_checkpoint
+                    del cfg_copy.resume_from_checkpoint
+                if cfg_copy.data.format == "dali":
+                    val_data_format = "image_folder"
+                else:
+                    val_data_format = cfg_copy.data.format
+                callbacks = []
+                if cfg_copy.checkpoint.enabled:
+                    ckpt = Checkpointer(
+                        cfg_copy,
+                        logdir=os.path.join(cfg_copy.checkpoint.dir, "linear"),
+                        frequency=cfg_copy.checkpoint.frequency,
+                        keep_prev=cfg_copy.checkpoint.keep_prev,
+                        monitor=cfg_copy.checkpoint.monitor,
+                        mode=cfg_copy.checkpoint.mode,
+                    )
+                    callbacks.append(ckpt)
+                trainer_kwargs = OmegaConf.to_container(cfg_copy)
+                # we only want to pass in valid Trainer args, the rest may be user specific
+                valid_kwargs = inspect.signature(Trainer.__init__).parameters
+                trainer_kwargs = {
+                    name: trainer_kwargs[name]
+                    for name in valid_kwargs
+                    if name in trainer_kwargs
                 }
-            )
-            trainer = Trainer(**trainer_kwargs)
-            train_loader = loader.load(train_feats, shuffle=True)
-            validation_loader = loader.load(val_feats, shuffle=False)
+                trainer_kwargs.update(
+                    {
+                        "logger": None,
+                        "callbacks": callbacks,
+                        "enable_checkpointing": False,
+                        "strategy": (
+                            DDPStrategy(find_unused_parameters=False)
+                            if cfg.strategy == "ddp"
+                            else cfg.strategy
+                        ),
+                    }
+                )
+                trainer = Trainer(**trainer_kwargs)
+                train_loader = loader.load(train_feats, shuffle=True)
+                validation_loader = loader.load(val_feats, shuffle=False)
 
-            trainer.fit(model, train_loader, validation_loader, ckpt_path=ckpt_path)
+                trainer.fit(model, train_loader, validation_loader, ckpt_path=ckpt_path)
 
-            curr_model = LinearModel.load_from_checkpoint(
-                checkpoint_path=ckpt.best_model_path,
-                backbone=backbone,
-                cfg=cfg_copy,
-                num_classes=num_classes,
-                feature_dim=feature_dim,
-            )
+                curr_model = LinearModel.load_from_checkpoint(
+                    checkpoint_path=ckpt.best_model_path,
+                    backbone=backbone,
+                    cfg=cfg_copy,
+                    num_classes=num_classes,
+                    feature_dim=feature_dim,
+                )
 
-            curr_val_acc = ckpt.best_metric
-            if curr_val_acc > best_val_acc:
-                best_model = curr_model
-                best_comb = (lr, wd)
-                best_val_acc = curr_val_acc
+                curr_val_acc = ckpt.best_metric
+                if curr_val_acc > best_val_acc:
+                    best_model = curr_model
+                    best_comb = (lr, wd)
+                    best_val_acc = curr_val_acc
+                pbar.update(1)
 
     end = time.time()
     length = end - start
