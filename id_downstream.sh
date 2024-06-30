@@ -4,7 +4,7 @@
 LINEAR_MEDMNIST_PATH=scripts/linear/medmnist/
 MODEL_ROOT_DIR=/graphics/scratch2/students/kargibo/checkpoints/oguz  # CHANGE
 CHECKPOINTS_DIR=/graphics/scratch2/students/kargibo/checkpoints/oguz/Downstream    # CHANGE
-TRAIN_FRACTION=1 # CHANGE TO 0.01 FOR 1% AND 0.1 FOR 10% EXPERIMENT
+TRAIN_FRACTION=1.0 # CHANGE TO 0.01 FOR 1% AND 0.1 FOR 10% EXPERIMENT
 
 # Recursively search for models ending with 'best_val_acc1.ckpt'
 find $MODEL_ROOT_DIR -type f -name "*best_val_acc1.ckpt" | while read -r model_path; do
