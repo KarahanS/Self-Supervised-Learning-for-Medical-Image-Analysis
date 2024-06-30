@@ -13,9 +13,12 @@ hydra:
 
 name: "vibcreg-medmnist-linear"
 pretrained_feature_extractor: None
+pretrain_method: "vibcreg"
 backbone:
   name: "resnet50"
-pretrain_method: "vibcreg"
+  kwargs:
+    img_size: 64
+    pretrained: False
 optimizer:
   name: "sgd"
   batch_size: 256

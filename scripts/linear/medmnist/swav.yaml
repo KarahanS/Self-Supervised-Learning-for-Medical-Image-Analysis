@@ -13,9 +13,12 @@ hydra:
 
 name: "swav-medmnist-linear"
 pretrained_feature_extractor: None
+pretrain_method: "swav"
 backbone:
   name: "resnet50"
-pretrain_method: "swav"
+  kwargs:
+    img_size: 64
+    pretrained: False
 optimizer:
   name: "sgd"
   batch_size: 256
