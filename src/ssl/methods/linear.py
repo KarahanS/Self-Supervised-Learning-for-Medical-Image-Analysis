@@ -330,7 +330,10 @@ class LinearModel(pl.LightningModule):
             Dict[str, Any]: a dict containing features and logits.
         """
 
-        logits = self.classifier(X)
+        if self.finetune:
+            logits = self.classifier(self.backbone(X))
+        else:
+            logits = self.classifier(X)
         return {"logits": logits, "feats": X}
 
     def shared_step(
@@ -348,6 +351,8 @@ class LinearModel(pl.LightningModule):
         """
 
         X, target = batch
+        if self.finetune:
+            target = target.flatten()
 
         metrics = {"batch_size": X.size(0)}
 

@@ -11,18 +11,18 @@ hydra:
   run:
     dir: .
 
-name: "vibcreg-medmnist-linear"
+name: "imagenet-medmnist-linear"
 pretrained_feature_extractor: None
 backbone:
   name: "resnet50"
   kwargs:
     img_size: 64
     pretrained: False
-pretrain_method: "vibcreg"
+pretrain_method: "imagenet"
 optimizer:
   name: "sgd"
   batch_size: 256
-  lr: [0.1, 0.01, 0.001]
+  lr: [0.0003]
   weight_decay: [0, 0.1, 0.01]
 scheduler:
   name: "step"
@@ -41,7 +41,7 @@ downstream_classifier:
 to_csv:
   enabled: True
   name: "downstream_results.csv"
-
+  
 # overwrite PL stuff
 max_epochs: 100
 devices: [0]
@@ -49,4 +49,4 @@ sync_batchnorm: True
 accelerator: "gpu"
 strategy: "ddp"
 precision: 32
-finetune: False
+finetune: True
