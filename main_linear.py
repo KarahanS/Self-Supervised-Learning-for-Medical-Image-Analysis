@@ -125,7 +125,7 @@ def main(cfg: DictConfig):
         if "encoder" in k:
             state[k.replace("encoder", "backbone")] = state[k]
             logging.warn(
-                "You are using an older checkpoint. Use a new one as some issues might arrise."
+                "You are using an older checkpoint. Use a new one as some issues might arise."
             )
         if "backbone" in k:
             state[k.replace("backbone.", "")] = state[k]
@@ -161,15 +161,25 @@ def main(cfg: DictConfig):
 
     print("Training on", len(train_dataclass), "samples on fraction", cfg.data.train_fraction)
 
-    train_feats_tuple = get_representations(backbone, train_dataclass, device)
-    val_feats_tuple = get_representations(backbone, val_dataclass, device)
-    test_feats_tuple = get_representations(backbone, test_dataclass, device)
+    if not cfg.finetune:
+        train_feats_tuple = get_representations(backbone, train_dataclass, device)
+        val_feats_tuple = get_representations(backbone, val_dataclass, device)
+        test_feats_tuple = get_representations(backbone, test_dataclass, device)
 
-    train_feats = data.TensorDataset(train_feats_tuple[0], train_feats_tuple[1])
-    val_feats = data.TensorDataset(val_feats_tuple[0], val_feats_tuple[1])
-    test_feats = data.TensorDataset(test_feats_tuple[0], test_feats_tuple[1])
+        train_feats = data.TensorDataset(train_feats_tuple[0], train_feats_tuple[1])
+        val_feats = data.TensorDataset(val_feats_tuple[0], val_feats_tuple[1])
+        test_feats = data.TensorDataset(test_feats_tuple[0], test_feats_tuple[1])
 
-    feature_dim = feature_dim = train_feats_tuple[0][0].shape[0]
+        feature_dim = feature_dim = train_feats_tuple[0][0].shape[0]
+    else:
+        train_feats = train_dataclass
+        val_feats = val_dataclass
+        test_feats = test_dataclass
+
+        # Get the feature dimensions from the backbone's output
+        # TODO: Look for a more elegant way than passing a temporary input
+        feature_dim = backbone(torch.randn(1, 3, cfg.data.image_size, cfg.data.image_size)).shape[1]
+
     num_classes = loader.get_num_classes()
 
     best_val_acc = 0

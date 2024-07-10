@@ -11,14 +11,14 @@ hydra:
   run:
     dir: .
 
-name: "vibcreg-medmnist-linear"
+name: "imagenet_frozen-medmnist-linear"
 pretrained_feature_extractor: None
 backbone:
   name: "resnet50"
   kwargs:
     img_size: 64
     pretrained: False
-pretrain_method: "vibcreg"
+pretrain_method: "imagenet_frozen"
 optimizer:
   name: "sgd"
   batch_size: 256
@@ -41,7 +41,7 @@ downstream_classifier:
 to_csv:
   enabled: True
   name: "downstream_results.csv"
-
+  
 # overwrite PL stuff
 max_epochs: 100
 devices: [0]
