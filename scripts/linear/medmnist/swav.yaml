@@ -49,3 +49,4 @@ sync_batchnorm: True
 accelerator: "gpu"
 strategy: "ddp"
 precision: 32
+finetune: False
