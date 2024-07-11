@@ -44,9 +44,6 @@ find $MODEL_ROOT_DIR -type f -name "*best_val_acc1.ckpt" | while read -r model_p
     SSL_CHECKPOINT_NAME="${model_dir#${MODEL_ROOT_DIR}/}"
     SSL_CHECKPOINT_NAME="${SSL_CHECKPOINT_NAME}/$model_file"
     
-    # Erase the content of the CHECKPOINTS_DIR
-    rm -rf ${CHECKPOINTS_DIR}/*
-
     echo "Running the downstream task for $name"
     
     # Run the downstream task
@@ -61,5 +58,8 @@ find $MODEL_ROOT_DIR -type f -name "*best_val_acc1.ckpt" | while read -r model_p
         name=${name} \
         data.train_fraction=${TRAIN_FRACTION} \
         to_csv.name=${result_csv} \
+    
+    # Erase leftover checkpoints
+    rm -r ${CHECKPOINTS_DIR}/${name}*
 
 done
