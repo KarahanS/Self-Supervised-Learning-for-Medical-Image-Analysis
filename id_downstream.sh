@@ -60,6 +60,6 @@ find $MODEL_ROOT_DIR -type f -name "*best_val_acc1.ckpt" | while read -r model_p
         to_csv.name=${result_csv} \
     
     # Erase leftover checkpoints
-    rm -r ${CHECKPOINTS_DIR}/${name}*
+    rm -r ${CHECKPOINTS_DIR}/linear/${name}*
 
 done
