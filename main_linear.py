@@ -188,107 +188,118 @@ def main(cfg: DictConfig):
     start = time.time()
 
     # add tqdm here
+    if isinstance(cfg.optimizer.lr, int) or isinstance(cfg.optimizer.lr, float):
+        cfg.optimizer.lr = [cfg.optimizer.lr]
+    if isinstance(cfg.optimizer.weight_decay, int) or isinstance(cfg.optimizer.weight_decay, float):
+        cfg.optimizer.weight_decay = [cfg.optimizer.weight_decay]
+    
     total_comb = len(cfg.optimizer.lr) * len(cfg.optimizer.weight_decay)
-    with tqdm(total=total_comb, desc="Grid search", position=0) as pbar:
-        for lr in cfg.optimizer.lr:
-            for wd in cfg.optimizer.weight_decay:
-                cfg_copy = copy.deepcopy(cfg)
-                backbone_copy = copy.deepcopy(
-                    backbone
-                )  # to avoid finetuning same backbone if cfg.finetune = True
-                cfg_copy.optimizer.lr = lr
-                cfg_copy.optimizer.weight_decay = wd
-                model = LinearModel(
-                    backbone_copy,
-                    cfg=cfg_copy,
-                    num_classes=num_classes,
-                    mixup_func=mixup_func,
-                    feature_dim=feature_dim,  # give feature dimensions
-                )
-
-                make_contiguous(model)
-                # can provide up to ~20% speed up
-                if not cfg_copy.performance.disable_channel_last:
-                    model = model.to(memory_format=torch.channels_last)
-
-                    ckpt_path, wandb_run_id = None, None
-                if cfg_copy.auto_resume.enabled and cfg_copy.resume_from_checkpoint is None:
-                    auto_resumer = AutoResumer(
-                        checkpoint_dir=os.path.join(cfg_copy.checkpoint.dir, "linear"),
-                        max_hours=cfg_copy.auto_resume.max_hours,
+    if total_comb > 1:
+        with tqdm(total=total_comb, desc="Grid search", position=0) as pbar:
+            for lr in cfg.optimizer.lr:
+                for wd in cfg.optimizer.weight_decay:
+                    cfg_copy = copy.deepcopy(cfg)
+                    backbone_copy = copy.deepcopy(
+                        backbone
+                    )  # to avoid finetuning same backbone if cfg.finetune = True
+                    cfg_copy.optimizer.lr = lr
+                    cfg_copy.optimizer.weight_decay = wd
+                    model = LinearModel(
+                        backbone_copy,
+                        cfg=cfg_copy,
+                        num_classes=num_classes,
+                        mixup_func=mixup_func,
+                        feature_dim=feature_dim,  # give feature dimensions
                     )
-                    resume_from_checkpoint, wandb_run_id = auto_resumer.find_checkpoint(
-                        cfg_copy
-                    )
-                    if resume_from_checkpoint is not None:
-                        print(
-                            "Resuming from previous checkpoint that matches specifications:",
-                            f"'{resume_from_checkpoint}'",
+
+                    make_contiguous(model)
+                    # can provide up to ~20% speed up
+                    if not cfg_copy.performance.disable_channel_last:
+                        model = model.to(memory_format=torch.channels_last)
+
+                        ckpt_path, wandb_run_id = None, None
+                    if cfg_copy.auto_resume.enabled and cfg_copy.resume_from_checkpoint is None:
+                        auto_resumer = AutoResumer(
+                            checkpoint_dir=os.path.join(cfg_copy.checkpoint.dir, "linear"),
+                            max_hours=cfg_copy.auto_resume.max_hours,
                         )
-                        ckpt_path = resume_from_checkpoint
-                elif cfg_copy.resume_from_checkpoint is not None:
-                    ckpt_path = cfg_copy.resume_from_checkpoint
-                    del cfg_copy.resume_from_checkpoint
-                if cfg_copy.data.format == "dali":
-                    val_data_format = "image_folder"
-                else:
-                    val_data_format = cfg_copy.data.format
-                callbacks = []
-                if cfg_copy.checkpoint.enabled:
-                    ckpt = Checkpointer(
-                        cfg_copy,
-                        logdir=os.path.join(cfg_copy.checkpoint.dir, "linear"),
-                        frequency=cfg_copy.checkpoint.frequency,
-                        keep_prev=cfg_copy.checkpoint.keep_prev,
-                        monitor=cfg_copy.checkpoint.monitor,
-                        mode=cfg_copy.checkpoint.mode,
-                    )
-                    callbacks.append(ckpt)
-                trainer_kwargs = OmegaConf.to_container(cfg_copy)
-                # we only want to pass in valid Trainer args, the rest may be user specific
-                valid_kwargs = inspect.signature(Trainer.__init__).parameters
-                trainer_kwargs = {
-                    name: trainer_kwargs[name]
-                    for name in valid_kwargs
-                    if name in trainer_kwargs
-                }
-                trainer_kwargs.update(
-                    {
-                        "logger": None,
-                        "callbacks": callbacks,
-                        "enable_checkpointing": False,
-                        "strategy": (
-                            DDPStrategy(find_unused_parameters=False)
-                            if cfg.strategy == "ddp"
-                            else cfg.strategy
-                        ),
+                        resume_from_checkpoint, wandb_run_id = auto_resumer.find_checkpoint(
+                            cfg_copy
+                        )
+                        if resume_from_checkpoint is not None:
+                            print(
+                                "Resuming from previous checkpoint that matches specifications:",
+                                f"'{resume_from_checkpoint}'",
+                            )
+                            ckpt_path = resume_from_checkpoint
+                    elif cfg_copy.resume_from_checkpoint is not None:
+                        ckpt_path = cfg_copy.resume_from_checkpoint
+                        del cfg_copy.resume_from_checkpoint
+                    if cfg_copy.data.format == "dali":
+                        val_data_format = "image_folder"
+                    else:
+                        val_data_format = cfg_copy.data.format
+                    callbacks = []
+                    if cfg_copy.checkpoint.enabled:
+                        ckpt = Checkpointer(
+                            cfg_copy,
+                            logdir=os.path.join(cfg_copy.checkpoint.dir, "linear"),
+                            frequency=cfg_copy.checkpoint.frequency,
+                            keep_prev=cfg_copy.checkpoint.keep_prev,
+                            monitor=cfg_copy.checkpoint.monitor,
+                            mode=cfg_copy.checkpoint.mode,
+                        )
+                        callbacks.append(ckpt)
+                    trainer_kwargs = OmegaConf.to_container(cfg_copy)
+                    # we only want to pass in valid Trainer args, the rest may be user specific
+                    valid_kwargs = inspect.signature(Trainer.__init__).parameters
+                    trainer_kwargs = {
+                        name: trainer_kwargs[name]
+                        for name in valid_kwargs
+                        if name in trainer_kwargs
                     }
-                )
-                trainer = Trainer(**trainer_kwargs)
-                train_loader = loader.load(train_feats, shuffle=True)
-                validation_loader = loader.load(val_feats, shuffle=False)
+                    trainer_kwargs.update(
+                        {
+                            "logger": None,
+                            "callbacks": callbacks,
+                            "enable_checkpointing": False,
+                            "strategy": (
+                                DDPStrategy(find_unused_parameters=False)
+                                if cfg.strategy == "ddp"
+                                else cfg.strategy
+                            ),
+                        }
+                    )
+                    trainer = Trainer(**trainer_kwargs)
+                    train_loader = loader.load(train_feats, shuffle=True)
+                    validation_loader = loader.load(val_feats, shuffle=False)
 
-                trainer.fit(model, train_loader, validation_loader, ckpt_path=ckpt_path)
+                    trainer.fit(model, train_loader, validation_loader, ckpt_path=ckpt_path)
 
-                curr_model = LinearModel.load_from_checkpoint(
-                    checkpoint_path=ckpt.best_model_path,
-                    backbone=backbone,
-                    cfg=cfg_copy,
-                    num_classes=num_classes,
-                    feature_dim=feature_dim,
-                )
+                    curr_model = LinearModel.load_from_checkpoint(
+                        checkpoint_path=ckpt.best_model_path,
+                        backbone=backbone,
+                        cfg=cfg_copy,
+                        num_classes=num_classes,
+                        feature_dim=feature_dim,
+                    )
 
-                curr_val_acc = ckpt.best_metric
-                if curr_val_acc > best_val_acc:
-                    best_model = curr_model
-                    best_comb = (lr, wd)
-                    best_val_acc = curr_val_acc
-                pbar.update(1)
+                    curr_val_acc = ckpt.best_metric
+                    if curr_val_acc > best_val_acc:
+                        best_model = curr_model
+                        best_comb = (lr, wd)
+                        best_val_acc = curr_val_acc
+                    pbar.update(1)
+    else:  # 1 combination, Skip grid search
+        print("Single LR and WD parameters given, skipping grid search.")
+
+        lr = cfg.optimizer.lr[0]
+        wd = cfg.optimizer.weight_decay[0]
+        best_comb = (lr, wd)
 
     end = time.time()
     length = end - start
 
-    model = best_model
     lr, wd = best_comb
     cfg.optimizer.lr = lr
     cfg.optimizer.weight_decay = wd
