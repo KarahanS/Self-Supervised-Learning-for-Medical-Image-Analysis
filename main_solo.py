@@ -102,7 +102,7 @@ def train_linear_head(cfg : DictConfig, backbone, loader, train_dataclass, val_d
     # For now, we are using a fixed linear model - manually set them for nop
     linear_cfg.optimizer = linear_cfg.grid_search.optimizer
     linear_cfg.downstream_classifier = linear_cfg.grid_search.downstream_classifier
-    linear_cfg.max_epochs = linear_cfg.grid_search.pretrain_max_epochs
+    linear_cfg.max_epochs = linear_cfg.grid_search.linear_max_epochs
     linear_cfg.scheduler = linear_cfg.grid_search.scheduler
 
     OmegaConf.update(linear_cfg, "data.task", 'multiclass')
@@ -369,6 +369,7 @@ def main(cfg: DictConfig):
     if grid_search_active:
         grid_hparams = cfg.grid_search.hparams
         # Close the wandb and checkpointing for grid search
+        cfg.max_epochs = omegaconf_select(cfg, "grid_search.pretrain_max_epochs", cfg.max_epochs)
         cfg.wandb.enabled = False
         cfg.checkpoint.enabled = False
     else:
@@ -386,9 +387,9 @@ def main(cfg: DictConfig):
         # Run the model
         result, linear_result = None, None
         if grid_search_active:
-            result, linear_result = train_ssl_model(cfg, grid_search_active)
+            result, linear_result = train_ssl_model(cfg, grid_search_enabled=True)
         else:
-            result, _ = train_ssl_model(cfg, grid_search_active)
+            result, _ = train_ssl_model(cfg, grid_search_enabled=False)
 
         if linear_result is not None:
             (_, _, out) = linear_result
@@ -397,8 +398,8 @@ def main(cfg: DictConfig):
                 best_hparams = current_hparams
 
     # Run the best model from the scratch
-    print(f"Training the model wtih best hyperparameters: {best_hparams}")
     if grid_search_active:
+        print(f"Training the model wtih best hyperparameters: {best_hparams}")
         cfg = _recall_cfg
         cfg.wandb.enabled = _recall_cfg.wandb.enabled
         cfg.checkpoint.enabled = _recall_cfg.checkpoint.enabled

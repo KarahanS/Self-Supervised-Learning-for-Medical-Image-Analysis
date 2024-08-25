@@ -24,7 +24,7 @@ do
             data=$DATASET optimizer.batch_size=$BATCH_SIZE \
             backbone.name=$RESNET_MODEL backbone.kwargs.pretrained=$PRETRAIN \
             grid_search.enabled=True grid_search.linear_max_epochs=100 \
-            grid_search.pretrain_max_epochs=[$GRID_SEARCH_EPOCHS] \
+            grid_search.pretrain_max_epochs=$GRID_SEARCH_EPOCHS \
             name="${DATASET}-${METHOD_NAME}-${RESNET_MODEL}-epochs-${EPOCHS}-pretrained-${PRETRAIN}-batch_size-${BATCH_SIZE}" 
     
     done
