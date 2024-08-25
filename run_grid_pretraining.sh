@@ -21,7 +21,7 @@ do
     for DATASET in "${DATASET_CFGS[@]}"
     do
         python main_solo.py --config-path $PRETRAIN_MEDMNIST_PATH --config-name $METHOD_RESNET_PATH  \
-            data=$DATASET optimizer.batch_size=$BATCH_SIZE \
+            data=$DATASET optimizer.batch_size=$BATCH_SIZE max_epochs=$EPOCHS \
             backbone.name=$RESNET_MODEL backbone.kwargs.pretrained=$PRETRAIN \
             grid_search.enabled=True grid_search.linear_max_epochs=100 \
             grid_search.pretrain_max_epochs=$GRID_SEARCH_EPOCHS \
