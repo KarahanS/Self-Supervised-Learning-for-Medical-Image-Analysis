@@ -51,6 +51,7 @@ _SUPPORTED_DATASETS = [
     "imagenet",
     "imagenet100",
     "custom",
+    *MEDMNIST_DATASETS,
 ]
 
 
@@ -67,7 +68,10 @@ def add_and_assert_dataset_cfg(cfg: omegaconf.DictConfig) -> omegaconf.DictConfi
     assert not OmegaConf.is_missing(cfg, "data.dataset")
     assert not OmegaConf.is_missing(cfg, "data.train_path")
 
-    assert cfg.data.dataset in _SUPPORTED_DATASETS
+    if len(cfg.data.dataset.split(',')) > 1:
+        pass
+    else:
+        assert cfg.data.dataset in _SUPPORTED_DATASETS
 
     # if validation path is not available, assume that we want to skip eval
     cfg.data.val_path = omegaconf_select(cfg, "data.val_path", None)
@@ -139,11 +143,15 @@ def parse_cfg(cfg: omegaconf.DictConfig):
     # default values for pytorch lightning stuff
     cfg = add_and_assert_lightning_cfg(cfg)
 
+    dataset = cfg.data.dataset.split(",") if "," in cfg.data.dataset else cfg.data.dataset
     # extra processing
-    if cfg.data.dataset in _N_CLASSES_PER_DATASET:
+
+    if isinstance(dataset, list):
+        cfg.data.num_classes = sum(_N_CLASSES_MEDMNIST[ds] for ds in dataset)
+    elif dataset in _N_CLASSES_PER_DATASET:
         cfg.data.num_classes = _N_CLASSES_PER_DATASET[cfg.data.dataset]
-    elif cfg.data.format in MEDMNIST_DATASETS:
-        cfg.data.num_classes = _N_CLASSES_MEDMNIST[cfg.data.format]
+    elif dataset in MEDMNIST_DATASETS:
+        cfg.data.num_classes = _N_CLASSES_MEDMNIST[dataset]
     else:
         # hack to maintain the current pipeline
         # even if the custom dataset doesn't have any labels

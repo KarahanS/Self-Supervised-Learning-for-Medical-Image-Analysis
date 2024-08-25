@@ -149,3 +149,43 @@ class ContrastiveTransformations:
 
     def __call__(self, x):
         return [self.contrastive_transformations(x) for _ in range(self.n_views)]
+
+class CombinedMedMNIST(data.Dataset):
+    def __init__(self, datasets):
+        self.datasets = datasets
+        self.cumulative_sizes = self._cumulative_sizes()
+        self.label_offsets = self._label_offsets()
+        self.num_classes = sum(len(dataset.info["label"]) for dataset in datasets)
+    def _cumulative_sizes(self):
+        cumulative_sizes = []
+        total_size = 0
+        for dataset in self.datasets:
+            total_size += len(dataset)
+            cumulative_sizes.append(total_size)
+        return cumulative_sizes
+    
+    def _label_offsets(self):
+        offsets = [0]
+        for i, dataset in enumerate(self.datasets[:-1]):  # Exclude the last dataset
+            max_label = np.max([label[0] for label in dataset.labels])
+            offsets.append(offsets[-1] + max_label + 1)
+        return offsets
+    
+    def __len__(self):
+        return self.cumulative_sizes[-1]
+    
+    def __getitem__(self, index):
+        if index < 0 or index >= self.__len__():
+            raise IndexError("Index out of bounds")
+        dataset_idx = next(i for i, size in enumerate(self.cumulative_sizes) if size > index)
+        if dataset_idx == 0:
+            dataset_index = index
+        else:
+            dataset_index = index - self.cumulative_sizes[dataset_idx - 1]
+
+        # update the label to be unique across all datasets 
+        img,label = self.datasets[dataset_idx][dataset_index]
+        label += self.label_offsets[dataset_idx]
+
+        return img, label
+    

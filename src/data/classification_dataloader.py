@@ -29,7 +29,7 @@ from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 from torchvision.datasets import STL10, ImageFolder
 
-from src.data.loader.medmnist_loader import get_data_class, get_single_label,MEDMNIST_DATASETS
+from src.data.loader.medmnist_loader import get_data_class, get_single_label,MEDMNIST_DATASETS,CombinedMedMNIST
 try:
     from src.data.h5_dataset import H5Dataset
 except ImportError:
@@ -169,11 +169,16 @@ def prepare_transforms(dataset: str) -> Tuple[nn.Module, nn.Module]:
         "imagenet100": imagenet_pipeline,
         "imagenet": imagenet_pipeline,
         "custom": custom_pipeline,
+
     }
+    pipelines.update({ds: build_medmnist_pipeline() for ds in MEDMNIST_DATASETS})
 
-    assert dataset in pipelines
-
-    pipeline = pipelines[dataset]
+    if len(dataset.split(',')) > 1:
+        # Assume that we are using Medmnist!
+        pipeline = build_medmnist_pipeline()
+    else:
+        assert dataset in pipelines
+        pipeline = pipelines[dataset]
     T_train = pipeline["T_train"]
     T_val = pipeline["T_val"]
 
@@ -209,6 +214,8 @@ def prepare_datasets(
         Tuple[Dataset, Dataset]: training dataset and validation dataset.
     """
 
+    dataset = dataset.split(",") if "," in dataset else dataset
+
     if train_data_path is None:
         sandbox_folder = Path(
             os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
@@ -221,16 +228,72 @@ def prepare_datasets(
         )
         val_data_path = sandbox_folder / "datasets"
 
-    assert dataset in [
-        "cifar10",
-        "cifar100",
-        "stl10",
-        "imagenet",
-        "imagenet100",
-        "custom",
-    ]
+    if isinstance(dataset, list):
+        train_datasets = []
+        val_datasets = []
 
-    if dataset in ["cifar10", "cifar100"]:
+        for i,ds in enumerate(dataset):
+            if ds in MEDMNIST_DATASETS:
+                train_dataset = get_data_class(ds)(
+                    transform=T_train,
+                    root=train_data_path[i] if isinstance(train_data_path, list) else train_data_path,
+                    download=download,
+                    split="train",
+                    size=64,
+                    as_rgb=True,
+                    target_transform=transforms.Compose(
+                        [
+                            transforms.Lambda(get_single_label)
+                        ]
+                    )
+                )
+                val_dataset = get_data_class(ds)(
+                    transform=T_val,
+                    root=val_data_path[i] if isinstance(val_data_path, list) else val_data_path,
+                    download=download,
+                    split="val",
+                    size=64,
+                    as_rgb=True,
+                    target_transform=transforms.Compose(
+                        [
+                            transforms.Lambda(get_single_label)
+                        ]
+                    )
+                )
+
+                train_datasets.append(train_dataset)
+                val_datasets.append(val_dataset)
+        train_dataset = CombinedMedMNIST(train_datasets)
+        val_dataset = CombinedMedMNIST(val_datasets)
+    elif dataset in MEDMNIST_DATASETS:
+        train_dataset = get_data_class(dataset)(
+            transform=T_train,
+            root=train_data_path,
+            download=download,
+            split="train",
+            size=64,
+            as_rgb=True,
+            target_transform=transforms.Compose(
+                [
+                    transforms.Lambda(get_single_label)
+                ]
+            )
+        )
+
+        val_dataset = get_data_class(dataset)(
+            transform=T_val,
+            root=val_data_path,
+            download=download,
+            split="val",
+            size=64,
+            as_rgb=True,
+            target_transform=transforms.Compose(
+                [
+                    transforms.Lambda(get_single_label)
+                ]
+            )
+        )
+    elif dataset in ["cifar10", "cifar100"]:
         DatasetClass = vars(torchvision.datasets)[dataset.upper()]
         train_dataset = DatasetClass(
             train_data_path,
@@ -265,34 +328,6 @@ def prepare_datasets(
             assert _h5_available
             train_dataset = H5Dataset(dataset, train_data_path, T_train)
             val_dataset = H5Dataset(dataset, val_data_path, T_val)
-        elif data_format in MEDMNIST_DATASETS:
-            train_dataset = get_data_class(data_format)(
-                transform=T_train,
-                root=train_data_path,
-                download=download,
-                split="train",
-                size=64,
-                as_rgb=True,
-                target_transform=transforms.Compose(
-                    [
-                        transforms.Lambda(get_single_label)
-                    ]
-                )
-            )
-
-            val_dataset = get_data_class(data_format)(
-                transform=T_train,
-                root=val_data_path,
-                download=download,
-                split="val",
-                size=64,
-                as_rgb=True,
-                target_transform=transforms.Compose(
-                    [
-                        transforms.Lambda(get_single_label)
-                    ]
-                )
-            )
         else:
             train_dataset = ImageFolder(train_data_path, T_train)
             val_dataset = ImageFolder(val_data_path, T_val)

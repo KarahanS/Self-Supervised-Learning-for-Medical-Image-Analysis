@@ -26,6 +26,7 @@ from src.utils import (
     momentum,
     positional_encodings,
     sinkhorn_knopp,
+    auto_umap,
 )
 
 __all__ = [
@@ -37,6 +38,7 @@ __all__ = [
     "momentum",
     "positional_encodings",
     "sinkhorn_knopp",
+    "auto_umap",
 ]
 
 

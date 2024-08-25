@@ -3,6 +3,7 @@ defaults:
   - augmentations: symmetric.yaml
   - wandb: private.yaml
   - data: medmnist.yaml
+  - grid_search: linear.yaml
   - override hydra/hydra_logging: disabled
   - override hydra/job_logging: disabled
 

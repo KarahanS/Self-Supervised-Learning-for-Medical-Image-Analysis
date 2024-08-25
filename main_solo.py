@@ -19,15 +19,18 @@
 
 import inspect
 import os
-
+import itertools
 import hydra
 import torch
+import logging
+import re
+
 from lightning.pytorch import Trainer, seed_everything
 from lightning.pytorch.callbacks import LearningRateMonitor
 from lightning.pytorch.loggers.wandb import WandbLogger
 from lightning.pytorch.strategies.ddp import DDPStrategy
-from omegaconf import DictConfig, OmegaConf
-from src.args.pretrain import parse_cfg
+from omegaconf import DictConfig, OmegaConf, listconfig
+from src.args.pretrain import parse_cfg,_N_CLASSES_MEDMNIST
 from src.data.classification_dataloader import (
     prepare_data as prepare_data_classification,
 )
@@ -39,9 +42,14 @@ from src.data.pretrain_dataloader import (
     prepare_datasets,
 )
 from src.ssl.methods import METHODS
+from src.ssl.methods.linear import LinearModel
+from src.data.loader.medmnist_loader import MedMNISTLoader,MEDMNIST_DATASETS
+from src.utils.enums import SplitType
 from src.utils.auto_resumer import AutoResumer
 from src.utils.checkpointer import Checkpointer
+from src.utils.eval import get_representations
 from src.utils.misc import make_contiguous, omegaconf_select
+from torch.utils import data
 
 try:
     from src.data.dali_dataloader import (
@@ -61,14 +69,95 @@ else:
     _umap_available = True
 
 
-@hydra.main(version_base="1.2")
-def main(cfg: DictConfig):
-    # hydra doesn't allow us to add new keys for "safety"
-    # set_struct(..., False) disables this behavior and allows us to add more parameters
-    # without making the user specify every single thing about the model
-    OmegaConf.set_struct(cfg, False)
-    cfg = parse_cfg(cfg)
+def build_data_loaders(dataset, image_size, batch_size, num_workers, root):
 
+    # get train loaders
+    logging.info("Preparing data loaders...")
+
+    loader = MedMNISTLoader(
+        data_flag=dataset,
+        download=True,
+        batch_size=batch_size,
+        size=image_size,
+        num_workers=num_workers,
+        root=root,
+    )
+
+    train_dataclass = loader.get_data(SplitType.TRAIN, root=root)
+    val_dataclass = loader.get_data(SplitType.VALIDATION, root=root)
+    test_dataclass = loader.get_data(
+        SplitType.TEST,
+        root=root,
+    )  # to be used afterwards for testing
+
+    return loader, train_dataclass, val_dataclass, test_dataclass
+
+def train_linear_head(cfg : DictConfig, backbone, loader, train_dataclass, val_dataclass, **trainer_kwargs):
+    # freeze the backbone
+    for param in backbone.parameters():
+        param.requires_grad = False
+
+    linear_cfg = cfg.copy()
+
+    # For now, we are using a fixed linear model - manually set them for nop
+    linear_cfg.optimizer = linear_cfg.grid_search.optimizer
+    linear_cfg.downstream_classifier = linear_cfg.grid_search.downstream_classifier
+    linear_cfg.max_epochs = linear_cfg.grid_search.pretrain_max_epochs
+    linear_cfg.scheduler = linear_cfg.grid_search.scheduler
+
+    OmegaConf.update(linear_cfg, "data.task", 'multiclass')
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    if cfg.data.dataset in MEDMNIST_DATASETS:
+        train_feats_tuple = get_representations(backbone, train_dataclass, device)
+        val_feats_tuple = get_representations(backbone, val_dataclass, device)
+
+        train_feats = data.TensorDataset(train_feats_tuple[0], train_feats_tuple[1])
+        val_feats = data.TensorDataset(val_feats_tuple[0], val_feats_tuple[1])
+        
+        feature_dim = feature_dim = train_feats_tuple[0][0].shape[0]
+        num_classes = _N_CLASSES_MEDMNIST[linear_cfg.data.dataset] 
+
+        mixup_func = None
+
+        linear_model = LinearModel(
+            backbone=backbone,
+            cfg=linear_cfg,
+            num_classes=num_classes,
+            mixup_func=mixup_func,
+            feature_dim=feature_dim,  # give feature dimensions
+        )
+
+        linear_train_loader = loader.load(train_feats, shuffle=True)
+        linear_validation_loader = loader.load(val_feats, shuffle=False)
+    else:
+        linear_train_loader, linear_validation_loader = None, None # placeholder
+        raise NotImplementedError("For now, only MedMNIST datasets are supported for grid search")
+
+    # Refresh it as DDPStrategy should be reinitialized
+    linear_trainer_kwargs = trainer_kwargs.copy()
+    linear_trainer_kwargs.update(
+        {
+            "enable_checkpointing": False,
+            "strategy": (
+                DDPStrategy(find_unused_parameters=False)
+                if cfg.strategy == "ddp"
+                else cfg.strategy
+            ),
+            "max_epochs": linear_cfg.max_epochs,
+        }
+    )
+
+    linear_trainer = Trainer(**linear_trainer_kwargs)
+    linear_trainer.fit(linear_model, linear_train_loader, linear_validation_loader)
+    out = linear_trainer.validate(linear_model, linear_validation_loader)
+
+    # Get the validation accuracy
+    return linear_trainer, linear_model, out
+    
+def train_ssl_model(cfg : DictConfig, grid_search_enabled: bool = False):
+    cfg = parse_cfg(cfg)
     seed_everything(cfg.seed)
 
     assert cfg.method in METHODS, f"Choose from {METHODS.keys()}"
@@ -250,6 +339,78 @@ def main(cfg: DictConfig):
     else:
         trainer.fit(model, train_loader, val_loader, ckpt_path=ckpt_path)
 
+    if grid_search_enabled:
+        if cfg.data.dataset in MEDMNIST_DATASETS:
+            loader, train_dataclass, val_dataclass, _ = build_data_loaders(cfg.data.dataset,
+                                                                                        64,
+                                                                                        cfg.optimizer.batch_size,
+                                                                                        8,
+                                                                                        cfg.data.train_path)
+        else:
+            linear_train_loader, linear_validation_loader = None, None # placeholder
+            raise NotImplementedError("For now, only MedMNIST datasets are supported for grid search")
+
+        # Train a linear head
+        linear_trainer, linear_model, out = train_linear_head(cfg, model.backbone, loader, train_dataclass, val_dataclass, **trainer_kwargs)
+        return (trainer, model, _), (linear_trainer, linear_model, out)
+    return (trainer, model, _), _
+
+            
+@hydra.main(version_base="1.2")
+def main(cfg: DictConfig):
+    # hydra doesn't allow us to add new keys for "safety"
+    # set_struct(..., False) disables this behavior and allows us to add more parameters
+    # without making the user specify every single thing about the model
+    OmegaConf.set_struct(cfg, False)
+
+    grid_search_active = omegaconf_select(cfg, "grid_search", None) and cfg.grid_search.enabled
+    grid_hparams = None
+    _recall_cfg = cfg.copy()
+    if grid_search_active:
+        grid_hparams = cfg.grid_search.hparams
+        # Close the wandb and checkpointing for grid search
+        cfg.wandb.enabled = False
+        cfg.checkpoint.enabled = False
+    else:
+        grid_hparams = {"optimizer.lr": [cfg.optimizer.lr], "optimizer.weight_decay": [cfg.optimizer.weight_decay]} # placeholder, does nothing
+
+    # Grid search by creating iterpools product of all hyperparameters
+    best_hparams = {}
+    best_accuracy = 0
+
+    for values in itertools.product(*grid_hparams.values()):
+        current_hparams = dict(zip(grid_hparams.keys(), values))
+        # Update the configuration object with the current key-value pairs
+        for key, val in current_hparams.items():
+            OmegaConf.update(cfg, key, val)
+        # Run the model
+        result, linear_result = None, None
+        if grid_search_active:
+            result, linear_result = train_ssl_model(cfg, grid_search_active)
+        else:
+            result, _ = train_ssl_model(cfg, grid_search_active)
+
+        if linear_result is not None:
+            (_, _, out) = linear_result
+            if out[0]['val_acc'] > best_accuracy:
+                best_accuracy = out[0]['val_acc'] #! Adjust these for balanced acc later?
+                best_hparams = current_hparams
+
+    # Run the best model from the scratch
+    print(f"Training the model wtih best hyperparameters: {best_hparams}")
+    if grid_search_active:
+        cfg = _recall_cfg
+        cfg.wandb.enabled = _recall_cfg.wandb.enabled
+        cfg.checkpoint.enabled = _recall_cfg.checkpoint.enabled
+
+        # add the name of the model to the cfg
+        for key, val in best_hparams.items():
+            OmegaConf.update(cfg, key, val)
+
+        cfg.name = f"{cfg.name}-lr-{cfg.optimizer.lr}-wd-{cfg.optimizer.weight_decay}"
+
+        (trainer,model,_), _ = train_ssl_model(cfg, grid_search_enabled = False)
+        
 
 if __name__ == "__main__":
     main()

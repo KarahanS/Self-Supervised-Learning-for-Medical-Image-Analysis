@@ -31,7 +31,7 @@ from torch.utils.data.dataset import Dataset
 from torchvision import transforms
 from torchvision.datasets import STL10, ImageFolder
 
-from src.data.loader.medmnist_loader import get_data_class, get_single_label, MEDMNIST_DATASETS
+from src.data.loader.medmnist_loader import get_data_class, get_single_label, MEDMNIST_DATASETS, CombinedMedMNIST
 try:
     from src.data.h5_dataset import H5Dataset
 except ImportError:
@@ -315,11 +315,45 @@ def prepare_datasets(
         Dataset: the desired dataset with transformations.
     """
 
+    dataset = dataset.split(",") if "," in dataset else dataset
+    train_data_path = train_data_path.split(",") if "," in train_data_path else train_data_path
+
     if train_data_path is None:
         sandbox_folder = Path(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
         train_data_path = sandbox_folder / "datasets"
 
-    if dataset in ["cifar10", "cifar100"]:
+    if isinstance(dataset, list):
+
+        datasets = [get_data_class(ds)(
+            split="train",
+            transform=transform,
+            download=download,
+            root=train_data_path[i] if isinstance(train_data_path, list) else train_data_path,
+            size=64,
+            as_rgb=True,
+            target_transform=transforms.Compose(
+                [
+                    transforms.Lambda(get_single_label)
+                ]
+            )
+        ) for i,ds in enumerate(dataset)]
+
+        train_dataset = dataset_with_index(CombinedMedMNIST)(datasets)
+    elif dataset in MEDMNIST_DATASETS:
+        train_dataset = dataset_with_index(get_data_class(dataset))(
+            split="train",
+            transform=transform,
+            download=download,
+            root=train_data_path,
+            size=64,
+            as_rgb=True,
+            target_transform=transforms.Compose(
+                [
+                    transforms.Lambda(get_single_label)
+                ]
+            )
+        )
+    elif dataset in ["cifar10", "cifar100"]:
         DatasetClass = vars(torchvision.datasets)[dataset.upper()]
         train_dataset = dataset_with_index(DatasetClass)(
             train_data_path,
@@ -343,21 +377,7 @@ def prepare_datasets(
             train_dataset = dataset_with_index(ImageFolder)(train_data_path, transform)
 
     elif dataset == "custom":
-        if data_format in MEDMNIST_DATASETS:
-            train_dataset = dataset_with_index(get_data_class(data_format))(
-                    split="train",            
-                    transform=transform,
-                    download=download,
-                    root=train_data_path,
-                    size=64,
-                    as_rgb=True,
-                    target_transform=transforms.Compose(
-                        [
-                         transforms.Lambda(get_single_label)
-                        ]
-                    )
-            )
-        elif no_labels:
+        if no_labels:
             dataset_class = CustomDatasetWithoutLabels
             train_dataset = dataset_with_index(dataset_class)(train_data_path, transform)
 
