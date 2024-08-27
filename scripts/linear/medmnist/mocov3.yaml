@@ -38,10 +38,11 @@ downstream_classifier:
   name: "linear"
   kwargs:
     hidden_dim: 1024
+    num_seeds: 5
 to_csv:
   enabled: True
   name: "downstream_results.csv"
-
+  
 # overwrite PL stuff
 max_epochs: 100
 devices: [0]
