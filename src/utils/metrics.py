@@ -21,7 +21,7 @@ from typing import Dict, List, Sequence
 
 import torch
 from torchmetrics import AUROC
-from torchmetrics.classification import MultilabelAUROC
+from torchmetrics.classification import MultilabelAUROC, MultilabelRecall
 from torch.utils import data
 from src.utils.enums import MedMNISTCategory
 import torch
@@ -110,3 +110,65 @@ def get_auroc_metric(model, test_loader, num_classes, task):
     else:
         auroc_metric = AUROC(task="multiclass", num_classes=num_classes)
         return auroc_metric(y_pred, y_true).item()
+
+def get_balanced_accuracy_metric(model, test_loader, num_classes, task='multiclass'):
+    """
+    Compute the Balanced Accuracy metric for a multiclass or multilabel classification task.
+
+    Balanced Accuracy is calculated as the average of recall obtained on each class or label.
+
+    Args:
+        model (torch.nn.Module): The trained model to evaluate.
+        test_loader (torch.utils.data.DataLoader): The data loader for the test dataset.
+        num_classes (int): The number of classes or labels in the classification task.
+        task (str): The type of classification task ('multiclass' or 'multilabel').
+
+    Returns:
+        float: The balanced accuracy as a percentage.
+    """
+    y_true = []
+    y_pred = []
+
+    # making sure that model is in eval mode and on gpu
+    model.eval()
+    model = model.cuda()
+
+    # Collect predictions and true labels
+    for batch in test_loader:
+        batch = [b.cuda() for b in batch]
+        inputs, labels = batch
+        outputs = model(inputs)
+
+        if task == 'multiclass':
+            # Multiclass case: get the predicted class index
+            _, predicted_labels = torch.max(outputs["logits"], 1)
+            y_true.extend(labels)
+            y_pred.extend(predicted_labels)
+        elif task == 'multilabel':
+            # Multilabel case: apply sigmoid and threshold
+            y_true.append(labels)
+            y_pred.append(outputs["logits"].sigmoid() > 0.5)  # threshold at 0.5 for multilabel
+
+    # Convert lists to tensors
+    y_true = torch.cat(y_true) if task == 'multilabel' else torch.stack(y_true).squeeze()
+    y_pred = torch.cat(y_pred) if task == 'multilabel' else torch.stack(y_pred)
+
+    if task == 'multiclass':
+        # Multiclass: Calculate TP and Nc for each class
+        TP_c = torch.zeros(num_classes)
+        Nc = torch.zeros(num_classes)
+
+        for c in range(num_classes):
+            TP_c[c] = ((y_pred == c) & (y_true == c)).sum().float()
+            Nc[c] = (y_true == c).sum().float()
+
+        # Calculate balanced accuracy for multiclass
+        class_recalls = TP_c / Nc
+        balanced_acc = class_recalls.mean().item() * 100
+
+    elif task == 'multilabel':
+        # Multilabel: Calculate balanced accuracy using multilabel recall
+        recall_metric = MultilabelRecall(num_labels=num_classes, average='macro')
+        balanced_acc = recall_metric(y_pred, y_true) * 100  # convert to percentage
+
+    return balanced_acc

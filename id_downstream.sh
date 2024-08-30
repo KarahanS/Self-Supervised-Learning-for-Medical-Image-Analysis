@@ -4,7 +4,7 @@
 
 # Define constants
 LINEAR_MEDMNIST_PATH=scripts/linear/medmnist/
-TRAIN_FRACTION=0.01 # CHANGE TO 0.01 FOR 1% AND 0.1 FOR 10% EXPERIMENT
+TRAIN_FRACTION=1.0 # CHANGE TO 0.01 FOR 1% AND 0.1 FOR 10% EXPERIMENT
 SEEDS=5 # parameter that controls how many different seeds are tried for downstream
 
 
@@ -62,10 +62,7 @@ for MODEL_ROOT_DIR in "${MODEL_ROOT_DIRS[@]}"; do
 
         name="linear-${DATASET_NAME}-${METHOD_NAME}-${ARCHITECTURE}-${PRETRAINED}"
         result_csv="paper_downstream_results.csv"
-        # if result_csv does not exist, create it
-        if [ ! -f $result_csv ]; then
-            touch $result_csv
-        fi
+
         # if fraction of training data is not 1.0, then change the name of the saved model
         if [[ $TRAIN_FRACTION != 1.0 ]]; then
             name="linear-${DATASET_NAME}-${METHOD_NAME}-${ARCHITECTURE}-${PRETRAINED}-fraction_${TRAIN_FRACTION}"
@@ -96,7 +93,7 @@ for MODEL_ROOT_DIR in "${MODEL_ROOT_DIRS[@]}"; do
             downstream_classifier.name="linear" \
             downstream_classifier.kwargs.num_seeds=${SEEDS} \
             checkpoint.dir=${CHECKPOINTS_DIR} \
-            max_epochs=1 \
+            max_epochs=100 \
             name=${name} \
             data.train_fraction=${TRAIN_FRACTION} \
             to_csv.name=${result_csv} \
