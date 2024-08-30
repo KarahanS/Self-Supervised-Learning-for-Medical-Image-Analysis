@@ -41,7 +41,7 @@ from src.data.loader.medmnist_loader import MedMNISTLoader
 from torch.utils.data import Subset
 from src.utils.setup import get_device
 from src.utils.eval import get_representations
-from src.utils.metrics import get_auroc_metric
+from src.utils.metrics import get_auroc_metric, get_balanced_accuracy_metric
 from src.args.linear import parse_cfg
 from src.ssl.methods.base import BaseMethod
 from src.ssl.methods.linear import LinearModel
@@ -86,7 +86,7 @@ def build_data_loaders(dataset, image_size, batch_size, num_workers, root, train
     return loader, train_dataclass, val_dataclass, test_dataclass
 
 
-def generate_seeds(seed: int, n: int) -> List[int]:
+def generate_seeds(n: int) -> List[int]:
     random.seed(time.time())
     return [random.randint(0, 2 ** 32 - 1) for _ in range(n)]
 
@@ -309,15 +309,12 @@ def main(cfg: DictConfig):
     cfg.optimizer.lr = lr
     cfg.optimizer.weight_decay = wd
 
-    seed_list = generate_seeds(cfg.seed, cfg.downstream_classifier.kwargs.num_seeds)
+    seed_list = generate_seeds(cfg.downstream_classifier.kwargs.num_seeds)
     print("Seed list:", seed_list)
     with tqdm(total=len(seed_list), desc="Running seeds", position=0) as seed_pbar:
         for i, seed in enumerate(seed_list):
             cfg.seed = int(seed)
             seed_everything(seed)
-
-            original_name = cfg.name
-            cfg.name = f"{original_name}-seed_{seed}"
 
             model = LinearModel(
                 backbone,
@@ -418,13 +415,20 @@ def main(cfg: DictConfig):
                 best_model, test_loader, loader.get_num_classes(), cfg.data.task
             )
 
+            balanced_accuracy = get_balanced_accuracy_metric(
+                best_model, test_loader, loader.get_num_classes(), cfg.data.task
+            )
+
             if cfg.wandb.enabled and i == len(seed_list) - 1 and wandb_logger is not None:
                 wandb_logger.log_metrics({"auroc": test_auroc})
                 wandb_logger.log_metrics({"grid search time": length})
                 wandb_logger.log_metrics({"weight decay": wd})
                 wandb_logger.log_metrics({"seed": seed})
+                wandb_logger.log_metrics({"balanced_accuracy": balanced_accuracy})
 
             logging.info(test_auroc)
+            logging.info(test_acc)
+            logging.info(balanced_accuracy)
             
             if cfg.to_csv.enabled:
                 csv_file = cfg.to_csv.name
@@ -438,15 +442,13 @@ def main(cfg: DictConfig):
                     # If the file doesn't exist, write the header
                     if not file_exists:
                         f.write(
-                            "model_name,downstream_classifier_name,dataset,learning_rate,weight_decay,test_acc,test_auroc,seed\n"
+                            "model_name,downstream_classifier_name,dataset,learning_rate,weight_decay,test_acc,test_auroc,seed,balanced_acc\n"
                         )
 
                     # Write the model data
                     f.write(
-                        f"{cfg.name},{cfg.downstream_classifier.name},{cfg.data.dataset},{lr},{wd},{test_acc},{test_auroc},{seed}\n"
+                        f"{cfg.name},{cfg.downstream_classifier.name},{cfg.data.dataset},{lr},{wd},{test_acc},{test_auroc},{seed},{balanced_accuracy}\n"
                     )
-            # Reset the model name after each run
-            cfg.name = original_name
             seed_pbar.update(1)  # Update the progress bar for each seed
 
 
