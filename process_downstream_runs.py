@@ -4,8 +4,8 @@ from scipy import stats
 import os
 
 # Configurable parameters
-input_csv_path = 'paper_downstream_results_0.01.csv'  # Path to the input CSV file
-output_csv_path = 'output_with_confidence_intervals.csv'  # Path to the output CSV file
+input_csv_path = 'paper_downstream_results.csv'  # Path to the input CSV file
+output_csv_path = 'output_with_confidence_intervalss.csv'  # Path to the output CSV file
 confidence_level = 0.95  # Confidence level for intervals
 
 def calculate_confidence_interval(data, confidence=0.95):
@@ -48,34 +48,64 @@ def main():
     grouped = df.groupby(['model_name', 'downstream_classifier_name'])
     for (model_name, classifier_name), group in grouped:
         accuracies = group['test_acc'].values
+        balanced_accuracies = group['balanced_acc'].values
+        aurocs = group['test_auroc'].values
+        
         if len(accuracies) > 1:
-            mean_acc, lower_bound, upper_bound = calculate_confidence_interval(accuracies, confidence=confidence_level)
+            mean_acc, lower_bound_acc, upper_bound_acc = calculate_confidence_interval(accuracies, confidence=confidence_level)
+            mean_bal_acc, lower_bound_bal_acc, upper_bound_bal_acc = calculate_confidence_interval(balanced_accuracies, confidence=confidence_level)
+            mean_auroc, lower_bound_auroc, upper_bound_auroc = calculate_confidence_interval(aurocs, confidence=confidence_level)
         else:
             mean_acc = accuracies[0]
-            lower_bound = upper_bound = mean_acc
+            lower_bound_acc = upper_bound_acc = mean_acc
+            mean_bal_acc = balanced_accuracies[0]
+            lower_bound_bal_acc = upper_bound_bal_acc = mean_bal_acc
+            mean_auroc = aurocs[0]
+            lower_bound_auroc = upper_bound_auroc = mean_auroc
         
         # Add results to the list, keeping all original columns
         result_dict = group.iloc[0].to_dict()  # Copy original row information
         result_dict.update({
             'mean_test_acc': mean_acc,
-            'ci_lower': lower_bound,
-            'ci_upper': upper_bound,
+            'ci_lower_test_acc': lower_bound_acc,
+            'ci_upper_test_acc': upper_bound_acc,
+            'mean_balanced_acc': mean_bal_acc,
+            'ci_lower_balanced_acc': lower_bound_bal_acc,
+            'ci_upper_balanced_acc': upper_bound_bal_acc,
+            'mean_test_auroc': mean_auroc,
+            'ci_lower_test_auroc': lower_bound_auroc,
+            'ci_upper_test_auroc': upper_bound_auroc,
             'number_of_seeds': len(accuracies)
         })
         results.append(result_dict)
     
     # Create a DataFrame from results
     result_df = pd.DataFrame(results)
+
+    # Drop original columns for accuracy and AUROC
+    if 'test_acc' in result_df.columns:
+        result_df = result_df.drop(columns=['test_acc'])
+    if 'balanced_acc' in result_df.columns:
+        result_df = result_df.drop(columns=['balanced_acc'])
+    if 'test_auroc' in result_df.columns:
+        result_df = result_df.drop(columns=['test_auroc'])
+    if 'seed' in result_df.columns:
+        result_df = result_df.drop(columns=['seed'])
     
     # Load existing output CSV if it exists
     rows_overwritten = 0
     rows_added = 0
-    if os.path.exists(output_csv_path):
+    if os.path.exists(output_csv_path) and not os.path.getsize(output_csv_path) == 0:
         print(f"Reading existing data from {output_csv_path}...")
+
         existing_df = pd.read_csv(output_csv_path)
-        
-        # Merge results with the existing data, updating where necessary
-        merged_df = pd.merge(existing_df, result_df, on=['model_name', 'downstream_classifier_name'], how='outer', suffixes=('', '_new'))
+
+        if existing_df.empty:
+            print("The output file is empty. All results will be added.")
+            merged_df = result_df
+        else:
+            # Merge results with the existing data, updating where necessary
+            merged_df = pd.merge(existing_df, result_df, on=['model_name', 'downstream_classifier_name'], how='outer', suffixes=('', '_new'))
 
         # Identify overwritten rows and new rows
         for index, row in merged_df.iterrows():
@@ -86,13 +116,10 @@ def main():
                     rows_added += 1
 
         # Keep the new data where it exists
-        combined_df = merged_df.drop(columns=['mean_test_acc', 'ci_lower', 'ci_upper', 'number_of_seeds'])
-        combined_df.rename(columns={
-            'mean_test_acc_new': 'mean_test_acc',
-            'ci_lower_new': 'ci_lower',
-            'ci_upper_new': 'ci_upper',
-            'number_of_seeds_new': 'number_of_seeds'
-        }, inplace=True)
+        combined_df = merged_df.drop(columns=['mean_test_acc', 'ci_lower_test_acc', 'ci_upper_test_acc', 
+                                              'mean_balanced_acc', 'ci_lower_balanced_acc', 'ci_upper_balanced_acc',
+                                              'mean_test_auroc', 'ci_lower_test_auroc', 'ci_upper_test_auroc',
+                                              'number_of_seeds'])
     else:
         combined_df = result_df
         rows_added = len(result_df)
