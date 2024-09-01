@@ -20,6 +20,8 @@
 import inspect
 import logging
 import os
+import random
+from typing import List
 
 from torch.utils import data
 import hydra
@@ -39,7 +41,7 @@ from src.data.loader.medmnist_loader import MedMNISTLoader
 from torch.utils.data import Subset
 from src.utils.setup import get_device
 from src.utils.eval import get_representations
-from src.utils.metrics import get_auroc_metric
+from src.utils.metrics import get_auroc_metric, get_balanced_accuracy_metric
 from src.args.linear import parse_cfg
 from src.ssl.methods.base import BaseMethod
 from src.ssl.methods.linear import LinearModel
@@ -84,6 +86,9 @@ def build_data_loaders(dataset, image_size, batch_size, num_workers, root, train
     return loader, train_dataclass, val_dataclass, test_dataclass
 
 
+def generate_seeds(n: int) -> List[int]:
+    random.seed(time.time())
+    return [random.randint(0, 2 ** 32 - 1) for _ in range(n)]
 
 @hydra.main(version_base="1.2")
 def main(cfg: DictConfig):
@@ -303,129 +308,148 @@ def main(cfg: DictConfig):
     lr, wd = best_comb
     cfg.optimizer.lr = lr
     cfg.optimizer.weight_decay = wd
-    # now we have the best_model
-    model = LinearModel(
-        backbone,
-        mixup_func=mixup_func,
-        cfg=cfg,
-        num_classes=num_classes,
-        feature_dim=feature_dim,  # give feature dimensions
-    )
 
-    # 1.7 will deprecate resume_from_checkpoint, but for the moment
-    # the argument is the same, but we need to pass it as ckpt_path to trainer.fit
-    ckpt_path, wandb_run_id = None, None
-    if cfg.auto_resume.enabled and cfg.resume_from_checkpoint is None:
-        auto_resumer = AutoResumer(
-            checkpoint_dir=os.path.join(cfg.checkpoint.dir, "linear"),
-            max_hours=cfg.auto_resume.max_hours,
-        )
-        resume_from_checkpoint, wandb_run_id = auto_resumer.find_checkpoint(cfg)
-        if resume_from_checkpoint is not None:
-            print(
-                "Resuming from previous checkpoint that matches specifications:",
-                f"'{resume_from_checkpoint}'",
+    seed_list = generate_seeds(cfg.downstream_classifier.kwargs.num_seeds)
+    print("Seed list:", seed_list)
+    with tqdm(total=len(seed_list), desc="Running seeds", position=0) as seed_pbar:
+        for i, seed in enumerate(seed_list):
+            cfg.seed = int(seed)
+            seed_everything(seed)
+
+            model = LinearModel(
+                backbone,
+                mixup_func=mixup_func,
+                cfg=cfg,
+                num_classes=num_classes,
+                feature_dim=feature_dim,  # give feature dimensions
             )
-            ckpt_path = resume_from_checkpoint
-    elif cfg.resume_from_checkpoint is not None:
-        ckpt_path = cfg.resume_from_checkpoint
-        del cfg.resume_from_checkpoint
 
-    callbacks = []
-
-    if cfg.checkpoint.enabled:
-        ckpt = Checkpointer(
-            cfg,
-            logdir=os.path.join(cfg.checkpoint.dir, "linear"),
-            frequency=cfg.checkpoint.frequency,
-            keep_prev=cfg.checkpoint.keep_prev,
-            monitor=cfg.checkpoint.monitor,
-            mode=cfg.checkpoint.mode,
-        )
-        callbacks.append(ckpt)
-
-    # wandb logging
-    if cfg.wandb.enabled:
-        wandb_logger = WandbLogger(
-            name=cfg.name,
-            project=cfg.wandb.project,
-            entity=cfg.wandb.entity,
-            offline=cfg.wandb.offline,
-            resume="allow" if wandb_run_id else None,
-            id=wandb_run_id,
-        )
-        wandb_logger.watch(model, log="gradients", log_freq=100)
-        wandb_logger.log_hyperparams(OmegaConf.to_container(cfg))
-
-        # lr logging
-        lr_monitor = LearningRateMonitor(logging_interval="step")
-        callbacks.append(lr_monitor)
-
-    trainer_kwargs = OmegaConf.to_container(cfg)
-    # we only want to pass in valid Trainer args, the rest may be user specific
-    valid_kwargs = inspect.signature(Trainer.__init__).parameters
-    trainer_kwargs = {
-        name: trainer_kwargs[name] for name in valid_kwargs if name in trainer_kwargs
-    }
-    trainer_kwargs.update(
-        {
-            "logger": wandb_logger if cfg.wandb.enabled else None,
-            "callbacks": callbacks,
-            "enable_checkpointing": False,
-            "strategy": (
-                DDPStrategy(find_unused_parameters=False)
-                if cfg.strategy == "ddp"
-                else cfg.strategy
-            ),
-        }
-    )
-    trainer = Trainer(**trainer_kwargs)
-
-    train_loader = loader.load(train_feats, shuffle=True)
-    validation_loader = loader.load(val_feats, shuffle=False)
-    test_loader = loader.load(test_feats, shuffle=False)
-
-    trainer.fit(model, train_loader, validation_loader, ckpt_path=ckpt_path)
-
-    best_model = LinearModel.load_from_checkpoint(
-        checkpoint_path=ckpt.best_model_path,
-        backbone=backbone,
-        cfg=cfg,
-        num_classes=num_classes,
-        feature_dim=feature_dim,
-    )
-    test_result = trainer.test(best_model, dataloaders=test_loader, verbose=False)
-    test_acc = test_result[0]["test_acc"]
-
-    test_auroc = get_auroc_metric(
-        best_model, test_loader, loader.get_num_classes(), cfg.data.task
-    )
-
-    if cfg.wandb.enabled:
-        wandb_logger.log_metrics({"auroc": test_auroc})
-    logging.info(test_auroc)
-    wandb_logger.log_metrics({"grid search time": length})
-    wandb_logger.log_metrics({"weight decay": wd})
-
-    if cfg.to_csv.enabled:
-        csv_file = cfg.to_csv.name
-        if not csv_file.endswith(".csv"):
-            csv_file += ".csv"
-
-        # Check if the CSV file exists
-        file_exists = os.path.isfile(csv_file)
-
-        with open(csv_file, "a") as f:
-            # If the file doesn't exist, write the header
-            if not file_exists:
-                f.write(
-                    "model_name,downstream_classifier_name,dataset,learning_rate,weight_decay,test_acc,test_auroc\n"
+            # 1.7 will deprecate resume_from_checkpoint, but for the moment
+            # the argument is the same, but we need to pass it as ckpt_path to trainer.fit
+            ckpt_path, wandb_run_id = None, None
+            if cfg.auto_resume.enabled and cfg.resume_from_checkpoint is None:
+                auto_resumer = AutoResumer(
+                    checkpoint_dir=os.path.join(cfg.checkpoint.dir, "linear"),
+                    max_hours=cfg.auto_resume.max_hours,
                 )
+                resume_from_checkpoint, wandb_run_id = auto_resumer.find_checkpoint(cfg)
+                if resume_from_checkpoint is not None:
+                    print(
+                        "Resuming from previous checkpoint that matches specifications:",
+                        f"'{resume_from_checkpoint}'",
+                    )
+                    ckpt_path = resume_from_checkpoint
+            elif cfg.resume_from_checkpoint is not None:
+                ckpt_path = cfg.resume_from_checkpoint
+                del cfg.resume_from_checkpoint
 
-            # Write the model data
-            f.write(
-                f"{cfg.name},{cfg.downstream_classifier.name},{cfg.data.dataset},{lr},{wd},{test_acc},{test_auroc}\n"
+            callbacks = []
+
+            if cfg.checkpoint.enabled:
+                ckpt = Checkpointer(
+                    cfg,
+                    logdir=os.path.join(cfg.checkpoint.dir, "linear"),
+                    frequency=cfg.checkpoint.frequency,
+                    keep_prev=cfg.checkpoint.keep_prev,
+                    monitor=cfg.checkpoint.monitor,
+                    mode=cfg.checkpoint.mode,
+                )
+                callbacks.append(ckpt)
+
+
+            # only enable wandb logging for the last seed
+            wandb_logger = None
+            if cfg.wandb.enabled and i == len(seed_list) - 1:
+                wandb_logger = WandbLogger(
+                    name=cfg.name,
+                    project=cfg.wandb.project,
+                    entity=cfg.wandb.entity,
+                    offline=cfg.wandb.offline,
+                    resume="allow" if wandb_run_id else None,
+                    id=wandb_run_id,
+                )
+                wandb_logger.watch(model, log="gradients", log_freq=100)
+                wandb_logger.log_hyperparams(OmegaConf.to_container(cfg))
+
+                # lr logging
+                lr_monitor = LearningRateMonitor(logging_interval="step")
+                callbacks.append(lr_monitor)
+
+            trainer_kwargs = OmegaConf.to_container(cfg)
+            # we only want to pass in valid Trainer args, the rest may be user specific
+            valid_kwargs = inspect.signature(Trainer.__init__).parameters
+            trainer_kwargs = {
+                name: trainer_kwargs[name] for name in valid_kwargs if name in trainer_kwargs
+            }
+            trainer_kwargs.update(
+                {
+                    "logger": wandb_logger if cfg.wandb.enabled else None,
+                    "callbacks": callbacks,
+                    "enable_checkpointing": False,
+                    "strategy": (
+                        DDPStrategy(find_unused_parameters=False)
+                        if cfg.strategy == "ddp"
+                        else cfg.strategy
+                    ),
+                }
             )
+            trainer = Trainer(**trainer_kwargs)
+
+            train_loader = loader.load(train_feats, shuffle=True)
+            validation_loader = loader.load(val_feats, shuffle=False)
+            test_loader = loader.load(test_feats, shuffle=False)
+
+            trainer.fit(model, train_loader, validation_loader, ckpt_path=ckpt_path)
+
+            best_model = LinearModel.load_from_checkpoint(
+                checkpoint_path=ckpt.best_model_path,
+                backbone=backbone,
+                cfg=cfg,
+                num_classes=num_classes,
+                feature_dim=feature_dim,
+            )
+            test_result = trainer.test(best_model, dataloaders=test_loader, verbose=False)
+            test_acc = test_result[0]["test_acc"]
+
+            test_auroc = get_auroc_metric(
+                best_model, test_loader, loader.get_num_classes(), cfg.data.task
+            )
+
+            balanced_accuracy = get_balanced_accuracy_metric(
+                best_model, test_loader, loader.get_num_classes(), cfg.data.task
+            )
+
+            if cfg.wandb.enabled and i == len(seed_list) - 1 and wandb_logger is not None:
+                wandb_logger.log_metrics({"auroc": test_auroc})
+                wandb_logger.log_metrics({"grid search time": length})
+                wandb_logger.log_metrics({"weight decay": wd})
+                wandb_logger.log_metrics({"seed": seed})
+                wandb_logger.log_metrics({"balanced_accuracy": balanced_accuracy})
+
+            logging.info(test_auroc)
+            logging.info(test_acc)
+            logging.info(balanced_accuracy)
+            
+            if cfg.to_csv.enabled:
+                csv_file = cfg.to_csv.name
+                if not csv_file.endswith(".csv"):
+                    csv_file += ".csv"
+
+                # Check if the CSV file exists
+                file_exists = os.path.isfile(csv_file)
+
+                with open(csv_file, "a") as f:
+                    # If the file doesn't exist, write the header
+                    if not file_exists:
+                        f.write(
+                            "model_name,downstream_classifier_name,dataset,learning_rate,weight_decay,test_acc,test_auroc,seed,balanced_acc\n"
+                        )
+
+                    # Write the model data
+                    f.write(
+                        f"{cfg.name},{cfg.downstream_classifier.name},{cfg.data.dataset},{lr},{wd},{test_acc},{test_auroc},{seed},{balanced_accuracy}\n"
+                    )
+            seed_pbar.update(1)  # Update the progress bar for each seed
 
 
 if __name__ == "__main__":

@@ -128,10 +128,6 @@ def main(cfg: DictConfig):
     best_acc1 = 0
     best_result = None
 
-    # print the parameters cfg.knn.k = omegaconf_select(cfg, "k", [200]) cfg.knn.T cfg.knn.distance_fx  cfg.knn.temperature  cfg.knn.feature_type  cfg.backbone  cfg.pretrain_method  cfg.knn.batch_size
-    # print(f"Parameters: {cfg.knn.k}, {cfg.knn.distance_fx}, {cfg.knn.T}, {cfg.knn.feature_type}, {cfg.backbone}, {cfg.pretrain_method}, {cfg.knn.batch_size}")
-    # print(cfg)
-
     # Calculate the total number of iterations
     if "cosine" and "euclidean" in cfg.knn.distance_fx:
         total_iterations = len(cfg.knn.feature_type) * len(cfg.knn.k) * (len(cfg.knn.T) + 1)
@@ -177,8 +173,6 @@ def main(cfg: DictConfig):
                 distance_fx=distance_fx,
             )
             best_result = (feat_type, k, distance_fx, T, acc1, acc5, confusion_matrix, recall, precision)
-            #print best result
-            #print(f"Best result: {best_result}")
             save_result_to_csv(best_result, cfg)
 
         # update the progress bar
@@ -198,13 +192,14 @@ def save_result_to_csv(result, cfg):
     with open(csv_file, "a") as f:
         if not file_exists:
             f.write(
-                "model_name,dataset,feature_type,k,distance_function,T,acc1,acc5,recall,precision\n"
+                "model_name,dataset,feature_type,k,distance_function,T,acc1,acc5\n"
             )
         
         f.write(
-            f"{cfg.name},{cfg.data.dataset},{result[0]},{result[1]},{result[2]},{result[3]},{result[4]},{result[5]},{result[7]},{result[8]}\n"
+            f"{cfg.name},{cfg.data.dataset},{result[0]},{result[1]},{result[2]},{result[3]},{result[4]},{result[5]}\n"
         )
 
 
 if __name__ == "__main__":
     main()
+
