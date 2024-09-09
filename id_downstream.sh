@@ -25,24 +25,16 @@ for MODEL_ROOT_DIR in "${MODEL_ROOT_DIRS[@]}"; do
     # Recursively search for models ending with 'best_val_acc1.ckpt'
     find $MODEL_ROOT_DIR -type f -name "*best_val_acc1.ckpt" | while read -r model_path; do
 
-        # Extract the directory path and model file name
-        model_dir=$(dirname "$model_path")
-        model_file=$(basename "$model_path")
-
-        # Extract the DATASET_NAME, METHOD_NAME, ARCHITECTURE, and whether it is pretrained
-        DATASET_NAME=$(echo $model_file | cut -d'-' -f1 | cut -d'.' -f1)
-        METHOD_NAME=$(echo $model_file | cut -d'-' -f2)
-        ARCHITECTURE=$(echo $model_file | cut -d'-' -f3)
-        # Extract the pretrained status using a more flexible method to accommodate various naming conventions
-        if echo "$model_file" | grep -q 'pretrained-False'; then
-            PRETRAINED_STATUS="False"
-        elif echo "$model_file" | grep -q 'pretrained-True'; then
-            PRETRAINED_STATUS="True"
-        elif echo "$model_file" | grep -q 'not_pretrained'; then
-            PRETRAINED_STATUS="False"
-        else
-            PRETRAINED_STATUS="True"
-        fi
+    # Extract the directory path and model file name
+    model_dir=$(dirname "$model_path")
+    model_file=$(basename "$model_path")
+    
+    # Extract the DATASET_NAME, METHOD_NAME, ARCHITECTURE, and whether it is pretrained
+    DATASET_NAME=$(echo $model_file | cut -d'-' -f1 | cut -d'.' -f1)
+    METHOD_NAME=$(echo $model_file | cut -d'-' -f2)
+    ARCHITECTURE=$(echo $model_file | cut -d'-' -f3)
+    # Extract the pretrained status using a more flexible method to accommodate various naming conventions
+    PRETRAINED_STATUS=$(echo $model_file | grep -o 'pretrained-[^-]*' | cut -d'-' -f2)
 
         if [[ $PRETRAINED_STATUS == "True" ]]; then
             PRETRAINED="pretrained"
@@ -75,28 +67,26 @@ for MODEL_ROOT_DIR in "${MODEL_ROOT_DIRS[@]}"; do
             continue
         fi
 
-        # Construct the SSL checkpoint name
-        SSL_CHECKPOINT_NAME="${model_dir#${MODEL_ROOT_DIR}/}"
-        SSL_CHECKPOINT_NAME="${SSL_CHECKPOINT_NAME}/$model_file"
+    # Construct the SSL checkpoint name
+    SSL_CHECKPOINT_NAME="${model_dir#${MODEL_ROOT_DIR}/}"
+    SSL_CHECKPOINT_NAME="${SSL_CHECKPOINT_NAME}/$model_file"
+    
+    echo "Running the downstream task for $name"
+    
+    # Run the downstream task
+    python -W ignore::UserWarning main_linear.py --config-path $LINEAR_MEDMNIST_PATH --config-name ${METHOD_NAME}.yaml \
+        pretrained_feature_extractor=${MODEL_ROOT_DIR}/${SSL_CHECKPOINT_NAME} \
+        data="${DATASET_NAME}.yaml" \
+        backbone.name=$ARCHITECTURE \
+        backbone.kwargs.img_size=64 \
+        downstream_classifier.name="linear" \
+        checkpoint.dir=${CHECKPOINTS_DIR} \
+        max_epochs=100 \
+        name=${name} \
+        data.train_fraction=${TRAIN_FRACTION} \
+        to_csv.name=${result_csv} \
+    
+    # Erase leftover checkpoints
+    rm -r ${CHECKPOINTS_DIR}/linear/${name}*
 
-        # Erase the content of the CHECKPOINTS_DIR
-        rm -rf ${CHECKPOINTS_DIR}/*
-
-        echo "Running the downstream task for $name"
-
-        # Run the downstream task
-        python -W ignore::UserWarning main_linear.py --config-path $LINEAR_MEDMNIST_PATH --config-name ${METHOD_NAME}.yaml \
-            pretrained_feature_extractor=${MODEL_ROOT_DIR}/${SSL_CHECKPOINT_NAME} \
-            data="${DATASET_NAME}.yaml" \
-            backbone.name=$ARCHITECTURE \
-            backbone.kwargs.img_size=64 \
-            downstream_classifier.name="linear" \
-            downstream_classifier.kwargs.num_seeds=${SEEDS} \
-            checkpoint.dir=${CHECKPOINTS_DIR} \
-            max_epochs=100 \
-            name=${name} \
-            data.train_fraction=${TRAIN_FRACTION} \
-            to_csv.name=${result_csv} \
-
-    done
 done

@@ -203,6 +203,8 @@ class Checkpointer(Callback):
         epoch = trainer.current_epoch  # type: ignore
         if epoch % self.frequency == 0:
             self.save(trainer)
+        elif epoch == trainer.max_epochs - 1: # Save the last!
+            self.save(trainer)
 
     def on_validation_end(self, trainer: pl.Trainer, _):
         if not trainer.sanity_checking:

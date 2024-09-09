@@ -3,6 +3,7 @@ import argparse
 from src.args.dataset import custom_dataset_args, dataset_args
 
 
+
 def parse_args_umap() -> argparse.Namespace:
     """Parses arguments for offline UMAP.
 
