@@ -131,7 +131,7 @@ torch==2.3.0+cu118
 torchaudio==2.3.0+cu118
 torchmetrics==0.10.3
 torchvision==0.18.0+cu118
-tornado==6.4
+tornado==6.4.1
 tqdm==4.66.4
 traitlets==5.14.3
 triton==2.3.0
