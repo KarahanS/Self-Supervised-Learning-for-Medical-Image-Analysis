@@ -52,7 +52,7 @@ keras==3.3.3
 kiwisolver==1.4.5
 lazy_loader==0.4
 libclang==18.1.1
-lightning==2.2.4
+lightning==2.3.2
 lightning-bolts==0.7.0
 lightning-flash==0.8.2
 lightning-utilities==0.11.2
