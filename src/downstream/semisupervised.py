@@ -17,8 +17,6 @@ import torch.utils.data as data
 from torch.utils.data import Subset
 import numpy as np
 
-from src.ssl.simclr.simclr import SimCLR
-
 import torch
 from pytorch_lightning import LightningModule
 
