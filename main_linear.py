@@ -52,6 +52,9 @@ from src.utils.enums import SplitType
 import copy
 import time
 
+from src.args.pretrain import _N_CLASSES_MEDMNIST
+from src.ssl.methods import METHODS
+
 try:
     from src.data.dali_dataloader import ClassificationDALIDataModule
 except ImportError:
@@ -90,6 +93,61 @@ def generate_seeds(n: int) -> List[int]:
     random.seed(time.time())
     return [random.randint(0, 2 ** 32 - 1) for _ in range(n)]
 
+
+def initialize_backbone(cfg: DictConfig, supervised: bool = False):
+    """Initialize the backbone model for linear evaluation. If supervised is False, the model is loaded from a checkpoint as usual.
+    If supervised is True, the model is initialized with the architecture specified in the config.
+
+    Args:
+        cfg (DictConfig): Configuration file
+        supervised (bool, optional): Whether the model is supervised or not. Defaults to False.
+
+    Returns:
+        nn.Module: The backbone model
+    """
+    if not supervised: 
+        backbone_model = BaseMethod._BACKBONES[cfg.backbone.name]  # initialize the architecture
+        backbone = backbone_model(method=cfg.pretrain_method, **cfg.backbone.kwargs)
+        if cfg.backbone.name.startswith("resnet"):
+            # remove fc layer
+            backbone.fc = nn.Identity()
+            cifar = cfg.data.dataset in ["cifar10", "cifar100"]
+            if cifar:
+                backbone.conv1 = nn.Conv2d(
+                    3, 64, kernel_size=3, stride=1, padding=2, bias=False
+                )
+                backbone.maxpool = nn.Identity()
+
+            ckpt_path = cfg.pretrained_feature_extractor
+            assert (
+                ckpt_path.endswith(".ckpt")
+                or ckpt_path.endswith(".pth")
+                or ckpt_path.endswith(".pt")
+            )
+            
+            state = torch.load(ckpt_path, map_location="cpu")["state_dict"]
+            for k in list(state.keys()):
+                if "encoder" in k:
+                    state[k.replace("encoder", "backbone")] = state[k]
+                    logging.warn(
+                        "You are using an older checkpoint. Use a new one as some issues might arise."
+                    )
+                if "backbone" in k:
+                    state[k.replace("backbone.", "")] = state[k]
+                del state[k]
+        backbone.load_state_dict(state, strict=False)
+        logging.info(f"Loaded {ckpt_path}")
+    else: 
+        cfg.data.num_classes = _N_CLASSES_MEDMNIST[cfg.data.dataset] 
+        model = METHODS[cfg.method](cfg)
+        
+        make_contiguous(model)        
+        if not cfg.performance.disable_channel_last:
+            model = model.to(memory_format=torch.channels_last)
+        backbone = model.backbone      
+    
+    return backbone
+
 @hydra.main(version_base="1.2")
 def main(cfg: DictConfig):
     # hydra doesn't allow us to add new keys for "safety"
@@ -99,45 +157,23 @@ def main(cfg: DictConfig):
     cfg = parse_cfg(cfg)
 
     seed_everything(cfg.seed)
-
     if "vit" not in cfg.backbone.name:
         cfg.backbone.kwargs.pop('img_size',None)
         cfg.backbone.kwargs.pop('pretrained',None)
+        
+    supervised = False
+    if cfg.pretrained_feature_extractor is None or cfg.pretrained_feature_extractor == "None":
+        if cfg.finetune:
+            # If finetuning without a pretrained model, it's supervised training
+            supervised = True
+            cfg.data.num_large_crops = 0
+            cfg.data.num_small_crops = 0
+        else:
+            # If not finetuning and no pretrained model is provided, raise an error
+            raise ValueError("Pretrained feature extractor must be provided for linear evaluation without finetuning")
     
-    backbone_model = BaseMethod._BACKBONES[cfg.backbone.name]
-
-    # initialize backbone
-    backbone = backbone_model(method=cfg.pretrain_method, **cfg.backbone.kwargs)
-    if cfg.backbone.name.startswith("resnet"):
-        # remove fc layer
-        backbone.fc = nn.Identity()
-        cifar = cfg.data.dataset in ["cifar10", "cifar100"]
-        if cifar:
-            backbone.conv1 = nn.Conv2d(
-                3, 64, kernel_size=3, stride=1, padding=2, bias=False
-            )
-            backbone.maxpool = nn.Identity()
-
-    ckpt_path = cfg.pretrained_feature_extractor
-    assert (
-        ckpt_path.endswith(".ckpt")
-        or ckpt_path.endswith(".pth")
-        or ckpt_path.endswith(".pt")
-    )
-
-    state = torch.load(ckpt_path, map_location="cpu")["state_dict"]
-    for k in list(state.keys()):
-        if "encoder" in k:
-            state[k.replace("encoder", "backbone")] = state[k]
-            logging.warn(
-                "You are using an older checkpoint. Use a new one as some issues might arise."
-            )
-        if "backbone" in k:
-            state[k.replace("backbone.", "")] = state[k]
-        del state[k]
-
-    backbone.load_state_dict(state, strict=False)
-    logging.info(f"Loaded {ckpt_path}")
+    if not supervised:
+       backbone = initialize_backbone(cfg, supervised=False)
 
     loader, train_dataclass, val_dataclass, test_dataclass = build_data_loaders(
         cfg.data.dataset,
@@ -163,7 +199,6 @@ def main(cfg: DictConfig):
             num_classes=loader.get_num_classes(),
         )
     device = get_device()
-
     print("Training on", len(train_dataclass), "samples on fraction", cfg.data.train_fraction)
 
     if not cfg.finetune:
@@ -175,15 +210,14 @@ def main(cfg: DictConfig):
         val_feats = data.TensorDataset(val_feats_tuple[0], val_feats_tuple[1])
         test_feats = data.TensorDataset(test_feats_tuple[0], test_feats_tuple[1])
 
-        feature_dim = feature_dim = train_feats_tuple[0][0].shape[0]
+        feature_dim = train_feats_tuple[0][0].shape[0]
     else:
         train_feats = train_dataclass
         val_feats = val_dataclass
         test_feats = test_dataclass
 
-        # Get the feature dimensions from the backbone's output
-        # TODO: Look for a more elegant way than passing a temporary input
-        feature_dim = backbone(torch.randn(1, 3, cfg.data.image_size, cfg.data.image_size)).shape[1]
+        # we'll get it when the backbone is initialized
+        feature_dim = None
 
     num_classes = loader.get_num_classes()
 
@@ -191,26 +225,42 @@ def main(cfg: DictConfig):
     best_model = None
     best_comb = (None, None)
     start = time.time()
-
-    # add tqdm here
-    if isinstance(cfg.optimizer.lr, int) or isinstance(cfg.optimizer.lr, float):
-        cfg.optimizer.lr = [cfg.optimizer.lr]
-    if isinstance(cfg.optimizer.weight_decay, int) or isinstance(cfg.optimizer.weight_decay, float):
-        cfg.optimizer.weight_decay = [cfg.optimizer.weight_decay]
     
-    total_comb = len(cfg.optimizer.lr) * len(cfg.optimizer.weight_decay)
+    if supervised:
+        lrs = cfg.grid_search.hparams.lr
+        wds = cfg.grid_search.hparams.weight_decay
+    else:
+        lrs = cfg.optimizer.lr
+        wds = cfg.optimizer.weight_decay
+        if isinstance(lrs, int) or isinstance(lrs, float):
+            lrs = [lrs]
+        if isinstance(wds, int) or isinstance(wds, float):
+            wds = [wds]
+    
+    total_comb = len(lrs) * len(wds)
+    skipped = False
     if total_comb > 1:
         with tqdm(total=total_comb, desc="Grid search", position=0) as pbar:
-            for lr in cfg.optimizer.lr:
-                for wd in cfg.optimizer.weight_decay:
+            for lr in lrs:
+                for wd in wds:
+                    
+                    if supervised:
+                        temp_backbone = initialize_backbone(cfg, supervised=True)
+                    else:
+                        temp_backbone = copy.deepcopy(backbone)
+                        # to avoid finetuning same backbone if cfg.finetune = True for self-supervised learning
+                        # this is not really necessary for supervised learning as we initialize the backbone again for each run
+                        
                     cfg_copy = copy.deepcopy(cfg)
-                    backbone_copy = copy.deepcopy(
-                        backbone
-                    )  # to avoid finetuning same backbone if cfg.finetune = True
                     cfg_copy.optimizer.lr = lr
                     cfg_copy.optimizer.weight_decay = wd
+                    
+                    if feature_dim is None:
+                        # TODO: Find a better way to get the feature dimensions
+                        feature_dim = temp_backbone(torch.randn(1, 3, cfg.data.image_size, cfg.data.image_size)).shape[1]
+                    
                     model = LinearModel(
-                        backbone_copy,
+                        temp_backbone,
                         cfg=cfg_copy,
                         num_classes=num_classes,
                         mixup_func=mixup_func,
@@ -221,7 +271,7 @@ def main(cfg: DictConfig):
                     # can provide up to ~20% speed up
                     if not cfg_copy.performance.disable_channel_last:
                         model = model.to(memory_format=torch.channels_last)
-
+                        
                         ckpt_path, wandb_run_id = None, None
                     if cfg_copy.auto_resume.enabled and cfg_copy.resume_from_checkpoint is None:
                         auto_resumer = AutoResumer(
@@ -283,7 +333,7 @@ def main(cfg: DictConfig):
 
                     curr_model = LinearModel.load_from_checkpoint(
                         checkpoint_path=ckpt.best_model_path,
-                        backbone=backbone,
+                        backbone=temp_backbone,
                         cfg=cfg_copy,
                         num_classes=num_classes,
                         feature_dim=feature_dim,
@@ -298,9 +348,10 @@ def main(cfg: DictConfig):
     else:  # 1 combination, Skip grid search
         print("Single LR and WD parameters given, skipping grid search.")
 
-        lr = cfg.optimizer.lr[0]
-        wd = cfg.optimizer.weight_decay[0]
+        lr = lrs[0]
+        wd = wds[0]
         best_comb = (lr, wd)
+        skipped = True
 
     end = time.time()
     length = end - start
@@ -316,6 +367,14 @@ def main(cfg: DictConfig):
             cfg.seed = int(seed)
             seed_everything(seed)
 
+            if supervised:
+                backbone = initialize_backbone(cfg, supervised=True)
+            else:
+                pass # backbone is already created for self-supervised learning
+            
+            if skipped and supervised:
+                feature_dim = backbone(torch.randn(1, 3, cfg.data.image_size, cfg.data.image_size)).shape[1]
+                
             model = LinearModel(
                 backbone,
                 mixup_func=mixup_func,
@@ -408,9 +467,10 @@ def main(cfg: DictConfig):
                 num_classes=num_classes,
                 feature_dim=feature_dim,
             )
+            
             test_result = trainer.test(best_model, dataloaders=test_loader, verbose=False)
             test_acc = test_result[0]["test_acc"]
-
+            
             test_auroc = get_auroc_metric(
                 best_model, test_loader, loader.get_num_classes(), cfg.data.task
             )

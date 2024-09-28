@@ -2,6 +2,7 @@ defaults:
   - _self_
   - wandb: private.yaml
   - data: pathmnist.yaml
+  - grid_search: linear.yaml
   - override hydra/hydra_logging: disabled
   - override hydra/job_logging: disabled
 
@@ -11,22 +12,26 @@ hydra:
   run:
     dir: .
 
-name: "imagenet_frozen-medmnist-linear"
+# When finetune: True and pretrained_feature_extractor: None, it corresponds to supervised learning
+name: "supervised"
 pretrained_feature_extractor: None
+method: "base"
 backbone:
   name: "resnet50"
   kwargs:
     img_size: 64
     pretrained: False
-pretrain_method: "imagenet_frozen"
+pretrain_method: "simsiam"
 optimizer:
-  name: "sgd"
+  name: "adamw"
   batch_size: 256
-  lr: [0.1, 0.01, 0.001]
-  weight_decay: [0, 0.1, 0.01]
+  lr: 3.0e-4
+  classifier_lr: 3.0e-4
+  weight_decay: 0.05
+  kwargs:
+    betas: [0.9, 0.95]
 scheduler:
-  name: "step"
-  lr_decay_steps: [60, 80]
+  name: "warmup_cosine"
 checkpoint:
   enabled: True
   dir: "trained_models"
@@ -38,6 +43,7 @@ downstream_classifier:
   name: "linear"
   kwargs:
     hidden_dim: 1024
+    num_seeds: 5
 to_csv:
   enabled: True
   name: "downstream_results.csv"
@@ -49,4 +55,4 @@ sync_batchnorm: True
 accelerator: "gpu"
 strategy: "ddp"
 precision: 32
-finetune: False
+finetune: True

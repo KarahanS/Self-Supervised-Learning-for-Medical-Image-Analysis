@@ -94,11 +94,18 @@ def get_auroc_metric(model, test_loader, num_classes, task):
     """
     y_true = []
     y_pred = []
+    
+    model.eval()
 
     for batch in test_loader:
-        x, y = batch
-        y_true.extend(y)
-        y_pred.extend(model(x)["logits"])  # forward is called - auroc works with logits
+        x,  y = batch
+
+        # Detach and move tensors to CPU before extending the lists
+        y_true.extend(y.detach().cpu())  # Detaching the ground truth labels
+
+        # Forward pass through the model, detaching the logits
+        logits = model(x)["logits"].detach().cpu()  # Detach and move to CPU
+        y_pred.extend(logits)
 
     y_true = torch.stack(y_true).squeeze()
     y_pred = torch.stack(y_pred)
@@ -135,28 +142,32 @@ def get_balanced_accuracy_metric(model, test_loader, num_classes, task='multicla
 
     # Collect predictions and true labels
     for batch in test_loader:
-        batch = [b.cuda() for b in batch]
+        batch = [b.cuda() for b in batch]  # Move batch to GPU
         inputs, labels = batch
         outputs = model(inputs)
 
         if task == 'multiclass':
             # Multiclass case: get the predicted class index
             _, predicted_labels = torch.max(outputs["logits"], 1)
-            y_true.extend(labels)
-            y_pred.extend(predicted_labels)
+            
+            # Detach, move to CPU, and extend the lists
+            y_true.extend(labels.detach().cpu())
+            y_pred.extend(predicted_labels.detach().cpu())
+            
         elif task == 'multilabel':
             # Multilabel case: apply sigmoid and threshold
-            y_true.append(labels)
-            y_pred.append(outputs["logits"].sigmoid() > 0.5)  # threshold at 0.5 for multilabel
+            y_true.append(labels.detach().cpu())
+            y_pred.append((outputs["logits"].sigmoid() > 0.5).detach().cpu())  # threshold at 0.5 for multilabel
 
-    # Convert lists to tensors
-    y_true = torch.cat(y_true) if task == 'multilabel' else torch.stack(y_true).squeeze()
-    y_pred = torch.cat(y_pred) if task == 'multilabel' else torch.stack(y_pred)
+
+    # Convert y_true and y_pred to tensors for further calculations
+    y_true = torch.tensor(y_true)
+    y_pred = torch.tensor(y_pred)
 
     if task == 'multiclass':
         # Multiclass: Calculate TP and Nc for each class
-        TP_c = torch.zeros(num_classes)
-        Nc = torch.zeros(num_classes)
+        TP_c = torch.zeros(num_classes).cuda()  # Ensure TP_c is on GPU if needed
+        Nc = torch.zeros(num_classes).cuda()    # Ensure Nc is on GPU if needed
 
         for c in range(num_classes):
             TP_c[c] = ((y_pred == c) & (y_true == c)).sum().float()
@@ -164,11 +175,16 @@ def get_balanced_accuracy_metric(model, test_loader, num_classes, task='multicla
 
         # Calculate balanced accuracy for multiclass
         class_recalls = TP_c / Nc
+        class_recalls[torch.isnan(class_recalls)] = 0  # Handle any NaN values from division by zero
         balanced_acc = class_recalls.mean().item() * 100
 
     elif task == 'multilabel':
+        # Convert y_true and y_pred to binary tensors for multilabel metrics
+        y_pred_binary = torch.stack(y_pred).float()  # Stack predictions for multilabel
+        y_true_binary = torch.stack(y_true).float()  # Stack true labels for multilabel
+
         # Multilabel: Calculate balanced accuracy using multilabel recall
         recall_metric = MultilabelRecall(num_labels=num_classes, average='macro')
-        balanced_acc = recall_metric(y_pred, y_true) * 100  # convert to percentage
+        balanced_acc = recall_metric(y_pred_binary, y_true_binary) * 100  # convert to percentage
 
     return balanced_acc
