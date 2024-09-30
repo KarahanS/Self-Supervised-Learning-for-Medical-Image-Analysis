@@ -39,8 +39,9 @@ checkpoint:
   frequency: 100
   monitor: 'val_acc1'
   mode: 'max'
+  filename: None
 auto_resume:
-  enabled: False
+  enabled: True
 max_epochs: 400
 devices: [0,]
 sync_batchnorm: True

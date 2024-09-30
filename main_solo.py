@@ -257,9 +257,13 @@ def train_ssl_model(cfg : DictConfig, grid_search_enabled: bool = False):
     # the argument is the same, but we need to pass it as ckpt_path to trainer.fit
     ckpt_path, wandb_run_id = None, None
     if cfg.auto_resume.enabled and cfg.resume_from_checkpoint is None:
+        if (cfg.checkpoint.filename is None or cfg.checkpoint.filename == "None"):
+            file = cfg.method
+        else:
+            file = cfg.checkpoint.filename
         auto_resumer = AutoResumer(
-            checkpoint_dir=os.path.join(cfg.checkpoint.dir, cfg.method),
-            max_hours=cfg.auto_resume.max_hours,
+            checkpoint_dir=os.path.join(cfg.checkpoint.dir, file),
+            max_hours=cfg.auto_resume.max_hours
         )
         resume_from_checkpoint, wandb_run_id = auto_resumer.find_checkpoint(cfg)
         if resume_from_checkpoint is not None:
@@ -271,6 +275,7 @@ def train_ssl_model(cfg : DictConfig, grid_search_enabled: bool = False):
     elif cfg.resume_from_checkpoint is not None:
         ckpt_path = cfg.resume_from_checkpoint
         del cfg.resume_from_checkpoint
+
 
     callbacks = []
 
@@ -371,7 +376,7 @@ def main(cfg: DictConfig):
         # Close the wandb and checkpointing for grid search
         cfg.max_epochs = omegaconf_select(cfg, "grid_search.pretrain_max_epochs", cfg.max_epochs)
         cfg.wandb.enabled = False
-        cfg.checkpoint.enabled = False
+        cfg.checkpoint.enabled = False  # don't save checkpoints for grid search
     else:
         grid_hparams = {"optimizer.lr": [cfg.optimizer.lr], "optimizer.weight_decay": [cfg.optimizer.weight_decay]} # placeholder, does nothing
 
@@ -399,7 +404,7 @@ def main(cfg: DictConfig):
 
     # Run the best model from the scratch
     if grid_search_active:
-        print(f"Training the model wtih best hyperparameters: {best_hparams}")
+        print(f"Training the model with best hyperparameters: {best_hparams}")
         cfg = _recall_cfg
         cfg.wandb.enabled = _recall_cfg.wandb.enabled
         cfg.checkpoint.enabled = _recall_cfg.checkpoint.enabled
