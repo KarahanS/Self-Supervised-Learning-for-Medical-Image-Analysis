@@ -12,11 +12,11 @@ TRAIN_FRACTION=1.0
 SEEDS=5
 EPOCHS=100
 GRID_SEARCH_EPOCHS=$((EPOCHS / 4))
-PRETRAINED=("False")
+PRETRAINED=("True")
 CHECKPOINT_DIR="/graphics/scratch2/students/saritas/supervised"
 
 # List of datasets to run
-DATASETS=("tissuemnist" "pathmnist" "dermamnist" "octmnist" "pneumoniamnist" "retinamnist" "breastmnist" "bloodmnist") # Removed the extra comma
+DATASETS=("tissuemnist" "pathmnist" "dermamnist" "octmnist" "pneumoniamnist" "retinamnist" "breastmnist" "bloodmnist" "organamnist" "organcmnist" "organsmnist") # Removed the extra comma
 # DATASETS=("organamnist" "organcmnist" "organsmnist") 
 
 # Loop over datasets
@@ -39,11 +39,11 @@ do
             fi
 
             # Run the supervised training
-            python -W ignore::UserWarning main_linear.py --config-path $PRETRAIN_MEDMNIST_PATH --config-name ${METHOD_NAME}.yaml \
+            python  main_linear.py --config-path $PRETRAIN_MEDMNIST_PATH --config-name ${METHOD_NAME}.yaml \
                 data="${DATASET}.yaml" \
                 backbone.name=$RESNET_MODEL \
-                backbone.kwargs.img_size=64 \
                 downstream_classifier.name="linear" \
+                backbone.kwargs.pretrained=$PRETRAIN \
                 downstream_classifier.kwargs.num_seeds=${SEEDS} \
                 checkpoint.dir=${CHECKPOINT_DIR} \
                 max_epochs=${EPOCHS} \

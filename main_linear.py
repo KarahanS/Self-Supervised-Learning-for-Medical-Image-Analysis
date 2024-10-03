@@ -157,9 +157,6 @@ def main(cfg: DictConfig):
     cfg = parse_cfg(cfg)
 
     seed_everything(cfg.seed)
-    if "vit" not in cfg.backbone.name:
-        cfg.backbone.kwargs.pop('img_size',None)
-        cfg.backbone.kwargs.pop('pretrained',None)
         
     supervised = False
     if cfg.pretrained_feature_extractor is None or cfg.pretrained_feature_extractor == "None":
@@ -171,7 +168,12 @@ def main(cfg: DictConfig):
         else:
             # If not finetuning and no pretrained model is provided, raise an error
             raise ValueError("Pretrained feature extractor must be provided for linear evaluation without finetuning")
-    
+    else: # self-supervised
+        if "vit" not in cfg.backbone.name: 
+            cfg.backbone.kwargs.pop('img_size',None)
+            cfg.backbone.kwargs.pop('pretrained',None)
+            
+            
     if not supervised:
        backbone = initialize_backbone(cfg, supervised=False)
 

@@ -19,7 +19,6 @@ method: "base"
 backbone:
   name: "resnet50"
   kwargs:
-    img_size: 64
     pretrained: False
 pretrain_method: "simsiam"
 optimizer:
