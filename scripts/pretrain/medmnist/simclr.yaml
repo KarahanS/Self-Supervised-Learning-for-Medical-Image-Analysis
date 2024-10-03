@@ -39,9 +39,11 @@ checkpoint:
   frequency: 100
   monitor: 'val_acc1'
   mode: 'max'
-  filename: None
 auto_resume:
-  enabled: True
+  enabled: False
+load:  # for self-supervised imagenet weight initialization
+  enabled: False
+  path: None
 max_epochs: 400
 devices: [0,]
 sync_batchnorm: True

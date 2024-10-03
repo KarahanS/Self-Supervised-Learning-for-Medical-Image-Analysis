@@ -40,7 +40,6 @@ class SimCLR(BaseMethod):
         super().__init__(cfg)
 
         self.temperature: float = cfg.method_kwargs.temperature
-
         proj_hidden_dim: int = cfg.method_kwargs.proj_hidden_dim
         proj_output_dim: int = cfg.method_kwargs.proj_output_dim
 
