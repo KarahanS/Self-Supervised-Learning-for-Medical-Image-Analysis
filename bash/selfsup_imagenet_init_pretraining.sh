@@ -4,7 +4,7 @@
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 
 PRETRAIN_MEDMNIST_PATH=scripts/pretrain/medmnist/
-METHOD_NAMES=("simclr" "byol")
+METHOD_NAMES=("simclr" "byol" "dino" "vicreg")
 
 RESNET_MODEL="resnet50"
 
@@ -17,7 +17,9 @@ CHECKPOINT_DIR="/graphics/scratch2/students/saritas/imagenet_checkpoints"
 # Define load paths corresponding to each method
 LOAD_PATHS=(
     "/graphics/scratch2/students/saritas/imagenet_checkpoints/imagenet_simclr/simclr_epoch_99-step_500400.ckpt"  # for simclr
-    "/graphics/scratch2/students/saritas/imagenet_checkpoints/imagenet_byol/byol_epoch_99-step_500400.ckpt"    # for byol
+    "/graphics/scratch2/students/saritas/imagenet_checkpoints/imagenet_byol/byol_epoch_99-step_500400.ckpt"      # for byol
+    "/graphics/scratch2/students/saritas/imagenet_checkpoints/imagenet_dino/dino_epoch_99-step_1000900.ckpt"     # for dino
+    "/graphics/scratch2/students/saritas/imagenet_checkpoints/imagenet_vicreg/vicreg_epoch_99-step_500400.ckpt"  # for vicreg
 )
 
 # List of datasets to run

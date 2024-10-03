@@ -43,7 +43,7 @@ class CheckpointModifier:
         ckpt = torch.load(ckpt_path)
         state_dict = ckpt['state_dict']
 
-        if self.cfg.method in ["simclr", "byol", "dino"]:
+        if self.cfg.method in ["simclr", "byol", "dino", "vicreg"]:
             self.remove_keys_starting_with(state_dict, 'online_classifier')
             torch.save(ckpt, ckpt_path)
             print(f"Modified checkpoint saved to: {ckpt_path}")
@@ -77,7 +77,10 @@ class CheckpointModifier:
            
             self.rename_keys_starting_with(state_dict, 'student_backbone', 'momentum_backbone')
             # classifier, head, momentum_head, dino_loss_func will be initialized randomly
-            
+        
+        elif self.cfg.method == "vicreg":
+            self.remove_keys_starting_with(state_dict, 'projection_head')
+        
         else:
             raise NotImplementedError(f"Method {self.cfg.method} not implemented yet.")
         
