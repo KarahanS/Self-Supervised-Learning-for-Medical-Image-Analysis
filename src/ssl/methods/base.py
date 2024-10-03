@@ -206,6 +206,7 @@ class BaseMethod(pl.LightningModule):
         ##############################
 
         # online linear classifier
+        print(cfg.data.num_classes)
         self.num_classes: int = cfg.data.num_classes
         
         self.classifier: nn.Module = nn.Linear(self.features_dim, self.num_classes)
