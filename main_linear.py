@@ -297,16 +297,6 @@ def main(cfg: DictConfig):
                     else:
                         val_data_format = cfg_copy.data.format
                     callbacks = []
-                    if cfg_copy.checkpoint.enabled:
-                        ckpt = Checkpointer(
-                            cfg_copy,
-                            logdir=os.path.join(cfg_copy.checkpoint.dir, "linear"),
-                            frequency=cfg_copy.checkpoint.frequency,
-                            keep_prev=cfg_copy.checkpoint.keep_prev,
-                            monitor=cfg_copy.checkpoint.monitor,
-                            mode=cfg_copy.checkpoint.mode,
-                        )
-                        callbacks.append(ckpt)
                     trainer_kwargs = OmegaConf.to_container(cfg_copy)
                     # we only want to pass in valid Trainer args, the rest may be user specific
                     valid_kwargs = inspect.signature(Trainer.__init__).parameters
