@@ -106,7 +106,8 @@ def train_linear_head(cfg : DictConfig, dataset, backbone, loader, train_datacla
     linear_cfg.max_epochs = linear_cfg.grid_search.linear_max_epochs
     linear_cfg.scheduler = linear_cfg.grid_search.scheduler
 
-    OmegaConf.update(linear_cfg, "data.task", 'multiclass')
+    # Pretty much hard-coded for now
+    OmegaConf.update(linear_cfg, "data.task", 'multiclass') if dataset.lower() != "chestmnist" else OmegaConf.update(linear_cfg, "data.task", 'multilabel')
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -118,7 +119,7 @@ def train_linear_head(cfg : DictConfig, dataset, backbone, loader, train_datacla
         val_feats = data.TensorDataset(val_feats_tuple[0], val_feats_tuple[1])
         
         feature_dim = feature_dim = train_feats_tuple[0][0].shape[0]
-        num_classes = _N_CLASSES_MEDMNIST[dataset] 
+        num_classes = loader.get_num_classes()
 
         mixup_func = None
 
