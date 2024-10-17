@@ -332,21 +332,25 @@ def main(cfg: DictConfig):
                     validation_loader = loader.load(val_feats, shuffle=False)
 
                     trainer.fit(model, train_loader, validation_loader, ckpt_path=ckpt_path)
-
-                    curr_model = LinearModel.load_from_checkpoint(
-                        checkpoint_path=ckpt.best_model_path,
-                        backbone=temp_backbone,
-                        cfg=cfg_copy,
-                        num_classes=num_classes,
-                        feature_dim=feature_dim,
-                    )
+                    
+                    # logic: take the best model (based on validation accuracy)
+                    # and compare it with the previous best models from different hyperparameter configurations.
 
                     curr_val_acc = ckpt.best_metric
                     if curr_val_acc > best_val_acc:
-                        best_model = curr_model
                         best_comb = (lr, wd)
                         best_val_acc = curr_val_acc
                     pbar.update(1)
+                    
+                    if cfg_copy.checkpoint.enabled: # if ckpt is saved, remove the directory (since this is only for grid search)
+                        if os.path.exists(ckpt.logdir):
+                            if os.path.isdir(ckpt.logdir):
+                                import shutil
+                                shutil.rmtree(ckpt.logdir)
+                            else:
+                                os.remove(ckpt.logdir)
+                            print("Removed checkpoint directory:", ckpt.logdir)
+                    
     else:  # 1 combination, Skip grid search
         print("Single LR and WD parameters given, skipping grid search.")
 
