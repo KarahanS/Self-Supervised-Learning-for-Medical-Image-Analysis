@@ -45,10 +45,15 @@ class CheckpointModifier:
 
         if self.cfg.method in ["simclr", "byol", "dino", "vicreg"]:
             self.remove_keys_starting_with(state_dict, 'online_classifier')
-            torch.save(ckpt, ckpt_path)
-            print(f"Modified checkpoint saved to: {ckpt_path}")
+            
+        elif self.cfg.method == "mocov3":  # selfmmsup
+            self.remove_keys_starting_with(state_dict, 'head.predictor')
+
         else:
             raise NotImplementedError(f"Method {self.cfg.method} not implemented yet.")
+        
+        torch.save(ckpt, ckpt_path)
+        print(f"Modified checkpoint saved to: {ckpt_path}")
 
     def reset_projector(self, ckpt_path: str):
         """Resets the projector head in the checkpoint state dictionary."""
@@ -81,11 +86,28 @@ class CheckpointModifier:
         elif self.cfg.method == "vicreg":
             self.remove_keys_starting_with(state_dict, 'projection_head')
         
+        elif self.cfg.method == "mocov3":
+            # again, take only the backbone
+            self.remove_keys_starting_with(state_dict, 'data_preprocessor')
+            self.remove_keys_starting_with(state_dict, 'neck')
+            self.remove_keys_starting_with(state_dict, 'momentum_encoder.module.1')
+            self.remove_keys_starting_with(state_dict, 'momentum_encoder.steps')
+            
+            self.rename_keys_starting_with(state_dict, 'momentum_encoder.module.0', 'momentum_backbone')
+            
         else:
             raise NotImplementedError(f"Method {self.cfg.method} not implemented yet.")
         
         torch.save(ckpt, ckpt_path)
         print(f"Modified checkpoint saved to: {ckpt_path}")
+        
+    def add_pytorch_lightning_version(self, ckpt_path: str):
+        """Adds the pytorch-lightning version to the checkpoint."""
+        ckpt = torch.load(ckpt_path)
+        if 'pytorch-lightning_version' not in ckpt:
+            ckpt['pytorch-lightning_version'] = '2.0.1.post0' # dummy version
+            torch.save(ckpt, ckpt_path)
+            print(f"Modified checkpoint saved to: {ckpt_path}")
 
     def process_checkpoint(self):
         """Main function to process the checkpoint by duplicating and resetting heads."""
@@ -93,4 +115,5 @@ class CheckpointModifier:
         if new_ckpt_path:
             self.reset_classifier(new_ckpt_path)
             self.reset_projector(new_ckpt_path)
+            self.add_pytorch_lightning_version(new_ckpt_path)
 
