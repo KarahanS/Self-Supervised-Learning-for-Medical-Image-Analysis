@@ -1,0 +1,14 @@
+type: "energy"
+optimizer: # Optimizer for LINEAR training
+  name: "sgd"
+  batch_size: 256
+  lr: 0.01
+  weight_decay: 0.0001
+scheduler:
+  name: "step"
+  lr_decay_steps: [60, 80]
+downstream_classifier:
+  name: "linear"
+  kwargs:
+    hidden_dim: 1024
+linear_max_epochs: 5

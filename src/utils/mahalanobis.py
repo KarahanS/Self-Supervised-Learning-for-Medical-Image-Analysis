@@ -43,7 +43,7 @@ def calculate_gaussian_parameters(feats: List[torch.Tensor]):
     return means, covs
 
 
-def calculate_confidence_scores(test_feats: torch.Tensor, means: torch.Tensor, covs: torch.Tensor):
+def calculate_confidence_scores(test_feats: torch.Tensor, means: torch.Tensor, covs: torch.Tensor, noise : float = None):
     '''
     Calculate the Mahalanobis distance between test features and the class means using matrix multiplication.
 
@@ -70,11 +70,23 @@ def calculate_confidence_scores(test_feats: torch.Tensor, means: torch.Tensor, c
         # First do (covs_inv @ diff^T), then diff @ result
         left = torch.matmul(diff, covs_inv)  # (N, D) @ (D, D) -> (N, D)
         distance = torch.sum(left * diff, axis=1)  # Element-wise multiplication and sum -> (N,)
-        distances[i] = distance
+        distances[i] = -distance
 
-    # Confidence score is the negative of the minimum Mahalanobis distance (highest similarity)
-    confidence_score = torch.min(distances, axis=0).values
-    return confidence_score
+    # Confidence score is the maximum distance to any class
+    class_preds = torch.argmax(distances, axis=0)
+
+    if noise is not None:
+        x_hat = test_feats - noise * torch.sign(torch.gradient(distances))
+        noised_distances = torch.zeros((num_class, num_samples), dtype=torch.float32)
+        for i in range(num_class):
+            diff = (x_hat - means[i]).float()
+            left = torch.matmul(diff, covs_inv)
+            distance = torch.sum(left * diff, axis=1)
+            noised_distances[i] = -distance
+        confidence_score = torch.max(noised_distances, axis=0).values
+    else:
+        confidence_score = torch.max(distances, axis=0).values
+    return confidence_score, class_preds
 
 
 def generate_ood_labels(feats1,feats2):
@@ -84,8 +96,8 @@ def generate_ood_labels(feats1,feats2):
     '''
     N1 = feats1.shape[0]
     N2 = feats2.shape[0]
-    labels = torch.ones(N1+N2)
-    labels[:N1] = 0
+    labels = torch.zeros(N1+N2)
+    labels[:N1] = 1
     return labels
 
 def calculate_scores(preds, labels):
@@ -94,4 +106,5 @@ def calculate_scores(preds, labels):
     '''
     auroc = roc_auc_score(labels, preds)
     aupr = average_precision_score(labels, preds)
+    # Area under precision-recall curve
     return auroc, aupr
