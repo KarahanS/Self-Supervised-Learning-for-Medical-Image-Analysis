@@ -181,6 +181,23 @@ def main(cfg: DictConfig):
 
     seed_everything(cfg.seed)
 
+
+    if cfg.to_csv.enabled:
+        csv_file = cfg.to_csv.name
+        if not csv_file.endswith(".csv"):
+            csv_file += ".csv"
+
+        # Check if the CSV file exists
+        file_exists = os.path.isfile(csv_file)
+
+        # If the file doesn't exist, write the header
+        if file_exists:
+            df = pd.read_csv(csv_file)
+            # Exit if cfg.name already exists in the CSV file
+            if cfg.name in df['model_name'].values:
+                logging.error(f"{cfg.name} already exists in the CSV file. Skipping")
+                exit(1)
+                
     if "vit" not in cfg.backbone.name:
         cfg.backbone.kwargs.pop('img_size',None)
         cfg.backbone.kwargs.pop('pretrained',None)
@@ -219,22 +236,6 @@ def main(cfg: DictConfig):
 
     backbone.load_state_dict(state, strict=False)
     logging.info(f"Loaded {ckpt_path}")
-
-    if cfg.to_csv.enabled:
-        csv_file = cfg.to_csv.name
-        if not csv_file.endswith(".csv"):
-            csv_file += ".csv"
-
-        # Check if the CSV file exists
-        file_exists = os.path.isfile(csv_file)
-
-        # If the file doesn't exist, write the header
-        if file_exists:
-            df = pd.read_csv(csv_file)
-            # Exit if cfg.name already exists in the CSV file
-            if cfg.name in df['model_name'].values:
-                logging.error(f"{cfg.name} already exists in the CSV file. Skipping")
-                exit(1)
 
     loader, train_dataclass, val_dataclass, test_dataclass = build_data_loaders(
         cfg.data.dataset,
@@ -427,10 +428,7 @@ def main(cfg: DictConfig):
 
     # Create a dist plot of the confidence scores showing the in-distribution and out-of-distribution samples
     conf_merged = torch.cat((confidence_scores, confidence_scores_ood))
-    q1 = torch.quantile(conf_merged, 0.25)
-    q3 = torch.quantile(conf_merged, 0.75)
-    iqr = q3 - q1
-
+    
     plt.figure(figsize=(10, 5))
     plt.hist(confidence_scores.cpu().numpy(), bins=100, alpha=0.5, label='In-distribution', log=True)
     plt.hist(confidence_scores_ood.cpu().numpy(), bins=100, alpha=0.5, label='Out-of-distribution', log=True)
