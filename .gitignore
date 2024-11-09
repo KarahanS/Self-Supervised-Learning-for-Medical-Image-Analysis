@@ -179,3 +179,5 @@ notes.txt
 # ignore custom scripts
 custom*.sh
 .nfs*
+
+csv.*

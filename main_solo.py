@@ -392,6 +392,7 @@ def main(cfg: DictConfig):
         cfg.load.path = cm.duplicate_ckpt()
         cm.reset_classifier(cfg.load.path)
         cm.reset_projector(cfg.load.path)
+        cm.add_pytorch_lightning_version(cfg.load.path) # important for .pth to .ckpt conversion
 
     grid_search_active = omegaconf_select(cfg, "grid_search", None) and cfg.grid_search.enabled
     grid_hparams = None

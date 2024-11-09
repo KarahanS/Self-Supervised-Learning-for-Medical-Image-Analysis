@@ -4,7 +4,8 @@
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 
 PRETRAIN_MEDMNIST_PATH=scripts/pretrain/medmnist/
-METHOD_NAMES=("simclr" "byol")
+METHOD_NAMES=("simclr" "byol" "dino" "vicreg")
+
 
 RESNET_MODEL="resnet50"
 
@@ -15,13 +16,26 @@ PRETRAINED=("False")
 CHECKPOINT_DIR="/graphics/scratch2/students/saritas/imagenet_checkpoints"
 
 # Define load paths corresponding to each method
+
+# Lightly: simclr, byol, dino, vicreg
+# mmselfsup: mocov3
+# all models are trained for 100 epoch
+# simclr, byol, vicreg: 256 batch size
+# dino: 128 batch size
+# mocov3: 4096 batch size
+
+# TODO: You can put all imagenet checkpoints to the same subfolder.  imagenet_checkpoints/checkpoints/
 LOAD_PATHS=(
-    "/graphics/scratch2/students/saritas/imagenet_checkpoints/imagenet_simclr/simclr_epoch_99-step_500400.ckpt"  # for simclr
-    "/graphics/scratch2/students/saritas/imagenet_checkpoints/imagenet_byol/byol_epoch_99-step_500400.ckpt"    # for byol
+    "/graphics/scratch2/students/saritas/imagenet_checkpoints/in1k/simclr_epoch_99-step_500400.ckpt"  # for simclr
+    "/graphics/scratch2/students/saritas/imagenet_checkpoints/in1k/byol_epoch_99-step_500400.ckpt"      # for byol
+    "/graphics/scratch2/students/saritas/imagenet_checkpoints/in1k/dino_epoch_99-step_1000900.ckpt"     # for dino
+    # "/graphics/scratch2/students/saritas/imagenet_checkpoints/in1k/vicreg_epoch_99-step_500400.ckpt"  # for vicreg
 )
 
 # List of datasets to run
-DATASETS=("pathmnist" "dermamnist" "octmnist" "pneumoniamnist" "retinamnist" "breastmnist" "bloodmnist" "organamnist" "organcmnist" "organsmnist" "tissuemnist")
+DATASETS=("pneumoniamnist" "retinamnist" "breastmnist" "bloodmnist" "organamnist" "organcmnist" "organsmnist" "tissuemnist")
+# "pathmnist" "dermamnist" "octmnist" <-- later
+
 
 # Loop over datasets
 for DATASET in "${DATASETS[@]}"
