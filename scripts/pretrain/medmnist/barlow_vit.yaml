@@ -42,7 +42,9 @@ checkpoint:
   mode: 'max'
 auto_resume:
   enabled: False
-
+load:  # for self-supervised imagenet weight initialization
+  enabled: False
+  path: None
 # overwrite PL stuff
 max_epochs: 400
 devices: [0,]

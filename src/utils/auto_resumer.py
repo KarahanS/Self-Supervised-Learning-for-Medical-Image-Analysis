@@ -89,13 +89,12 @@ class AutoResumer:
                         checkpoint=checkpoint_file,
                     )
                     candidates.append(ck)
-
+       
         if candidates:
             # sort by most recent
             candidates = sorted(candidates, key=lambda ck: ck.creation_time, reverse=True)
-
             for candidate in candidates:
-                candidate_cfg = DictConfig(json.load(open(candidate.args)))
+                candidate_cfg = DictConfig(json.load(open(candidate.args)))       
                 if all(
                     omegaconf_select(candidate_cfg, param, None)
                     == omegaconf_select(cfg, param, None)
