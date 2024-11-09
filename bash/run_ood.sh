@@ -3,6 +3,7 @@
 OOD_MEDMNIST_PATH=scripts/ood/medmnist/
 MODEL_ROOT_DIR="/graphics/scratch2/students/kargibo/experiments"
 METHOD_NAMES=("simclr" "byol" "dino" "ressl" "mocov3")
+export PYTHONPATH=$PYTHONPATH:$(pwd)
 
 DATASETS=("organamnist" "organcmnist" "organsmnist" "pathmnist" "tissuemnist" "breastmnist" "pneumoniamnist" "dermamnist" "retinamnist" "octmnist")
 # Recursively search for models ending with 'best_val_acc1.ckpt'
@@ -25,8 +26,13 @@ for ID_DATASET in "${DATASETS[@]}"; do
                 ARCHITECTURE=$(echo $model_file | cut -d'-' -f3)
                 
             
-                # If dataset names does not maatch skip
+                # If dataset names does not match skip
                 if [[ $DATASET_NAME != $ID_DATASET ]]; then
+                    continue
+                fi
+
+                # If architecture has vit in it, skip
+                if [[ $ARCHITECTURE == *"vit"* ]]; then
                     continue
                 fi
 
@@ -54,7 +60,7 @@ for ID_DATASET in "${DATASETS[@]}"; do
                     backbone.kwargs.img_size=64 \
                     wandb.enabled=False \
                     name="ood-${OOD_DATASET}-${METHOD_NAME}-${ARCHITECTURE}-${PRETRAINED}" \
-                    to_csv.name="last_ood_results.csv"
+                    to_csv.name="last_mahob_ood_results.csv"
             done
         done
     done

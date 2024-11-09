@@ -6,6 +6,7 @@ export PYTHONPATH=$PYTHONPATH:$(pwd)
 PRETRAIN_MEDMNIST_PATH=scripts/pretrain/medmnist/
 METHOD_NAMES=("simclr" "byol" "dino" "vicreg")
 
+
 RESNET_MODEL="resnet50"
 
 BATCH_SIZE=256
@@ -15,6 +16,7 @@ PRETRAINED=("False")
 CHECKPOINT_DIR="/graphics/scratch2/students/saritas/imagenet_checkpoints"
 
 # Define load paths corresponding to each method
+
 # Lightly: simclr, byol, dino, vicreg
 # mmselfsup: mocov3
 # all models are trained for 100 epoch
@@ -33,6 +35,7 @@ LOAD_PATHS=(
 # List of datasets to run
 DATASETS=("pneumoniamnist" "retinamnist" "breastmnist" "bloodmnist" "organamnist" "organcmnist" "organsmnist" "tissuemnist")
 # "pathmnist" "dermamnist" "octmnist" <-- later
+
 
 # Loop over datasets
 for DATASET in "${DATASETS[@]}"

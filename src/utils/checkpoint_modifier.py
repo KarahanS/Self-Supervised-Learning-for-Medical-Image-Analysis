@@ -3,6 +3,7 @@ from omegaconf import DictConfig, OmegaConf
 from src.ssl.methods import METHODS
 from src.args.pretrain import parse_cfg, _N_CLASSES_MEDMNIST
 
+
 # Keep only the backbones - remove the rest (classifier, projector, etc.)
 
 class CheckpointModifier:
@@ -43,6 +44,7 @@ class CheckpointModifier:
         ckpt = torch.load(ckpt_path)
         state_dict = ckpt['state_dict']
 
+
         if self.cfg.method in ["simclr", "byol", "dino", "vicreg"]:
             self.remove_keys_starting_with(state_dict, 'online_classifier')
             
@@ -54,6 +56,7 @@ class CheckpointModifier:
         
         torch.save(ckpt, ckpt_path)
         print(f"Modified checkpoint saved to: {ckpt_path}")
+
 
     def reset_projector(self, ckpt_path: str):
         """Resets the projector head in the checkpoint state dictionary."""
@@ -68,6 +71,7 @@ class CheckpointModifier:
         elif self.cfg.method == "byol": # all of the heads will be initialized randomly
             # 2 backbones: backbone and momentum_backbone
             self.remove_keys_starting_with(state_dict, 'projection_head')
+
             self.remove_keys_starting_with(state_dict, 'prediction_head')
             self.remove_keys_starting_with(state_dict, 'teacher_projection')
             
@@ -109,6 +113,7 @@ class CheckpointModifier:
             torch.save(ckpt, ckpt_path)
             print(f"Modified checkpoint saved to: {ckpt_path}")
 
+
     def process_checkpoint(self):
         """Main function to process the checkpoint by duplicating and resetting heads."""
         new_ckpt_path = self.duplicate_ckpt()
@@ -116,4 +121,5 @@ class CheckpointModifier:
             self.reset_classifier(new_ckpt_path)
             self.reset_projector(new_ckpt_path)
             self.add_pytorch_lightning_version(new_ckpt_path)
+
 

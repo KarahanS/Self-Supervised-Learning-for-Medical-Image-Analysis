@@ -93,7 +93,7 @@ def build_data_loaders(dataset, image_size, batch_size, num_workers, root):
 
     return loader, train_dataclass, val_dataclass, test_dataclass
 
-def train_linear_head(cfg : DictConfig, backbone, loader, train_dataclass, val_dataclass, **trainer_kwargs):
+def train_linear_head(cfg : DictConfig, dataset, backbone, loader, train_dataclass, val_dataclass, **trainer_kwargs):
     # freeze the backbone
     for param in backbone.parameters():
         param.requires_grad = False
@@ -110,7 +110,7 @@ def train_linear_head(cfg : DictConfig, backbone, loader, train_dataclass, val_d
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    if cfg.data.dataset in MEDMNIST_DATASETS:
+    if dataset in MEDMNIST_DATASETS:
         train_feats_tuple = get_representations(backbone, train_dataclass, device)
         val_feats_tuple = get_representations(backbone, val_dataclass, device)
 
@@ -118,7 +118,7 @@ def train_linear_head(cfg : DictConfig, backbone, loader, train_dataclass, val_d
         val_feats = data.TensorDataset(val_feats_tuple[0], val_feats_tuple[1])
         
         feature_dim = feature_dim = train_feats_tuple[0][0].shape[0]
-        num_classes = _N_CLASSES_MEDMNIST[linear_cfg.data.dataset] 
+        num_classes = _N_CLASSES_MEDMNIST[dataset] 
 
         mixup_func = None
 
@@ -348,20 +348,35 @@ def train_ssl_model(cfg : DictConfig, grid_search_enabled: bool = False):
     else:
         trainer.fit(model, train_loader, val_loader, ckpt_path=ckpt_path)
 
+    outs = []
     if grid_search_enabled:
-        if cfg.data.dataset in MEDMNIST_DATASETS:
-            loader, train_dataclass, val_dataclass, _ = build_data_loaders(cfg.data.dataset,
-                                                                                        64,
-                                                                                        cfg.optimizer.batch_size,
-                                                                                        8,
-                                                                                        cfg.data.train_path)
+        if ',' in cfg.data.dataset:
+            datasets = cfg.data.dataset.split(',')
         else:
-            linear_train_loader, linear_validation_loader = None, None # placeholder
-            raise NotImplementedError("For now, only MedMNIST datasets are supported for grid search")
+            datasets = [cfg.data.dataset]
+        for dataset in datasets:
+            if dataset in MEDMNIST_DATASETS:
+                loader, train_dataclass, val_dataclass, _ = build_data_loaders(dataset,
+                                                                               64,
+                                                                               cfg.optimizer.batch_size,
+                                                                               8,
+                                                                               cfg.data.train_path)
+            else:
+                linear_train_loader, linear_validation_loader = None, None # placeholder
+                raise NotImplementedError("For now, only MedMNIST datasets are supported for grid search")
 
-        # Train a linear head
-        linear_trainer, linear_model, out = train_linear_head(cfg, model.backbone, loader, train_dataclass, val_dataclass, **trainer_kwargs)
-        return (trainer, model, _), (linear_trainer, linear_model, out)
+            # Train a linear head
+            linear_trainer, linear_model, out = train_linear_head(cfg, dataset, model.backbone, loader, train_dataclass, val_dataclass, **trainer_kwargs)
+            outs.append(out)
+
+        # Out is the average of all the scores
+        keys = outs[0][0].keys()
+        out_average = {
+            key: sum([out[0][key] for out in outs]) / len(outs)
+            for key in keys
+        }
+        
+        return (trainer, model, _), (linear_trainer, linear_model, out_average)
     return (trainer, model, _), _
 
             
@@ -409,9 +424,10 @@ def main(cfg: DictConfig):
 
         if linear_result is not None:
             (_, _, out) = linear_result
-            if out[0]['val_acc'] > best_accuracy:
-                best_accuracy = out[0]['val_acc'] #! Adjust these for balanced acc later?
+            if out['val_acc'] > best_accuracy:
+                best_accuracy = out['val_acc'] #! Adjust these for balanced acc later?
                 best_hparams = current_hparams
+                print(f"New best hyperparameters: {best_hparams} with accuracy: {best_accuracy}")
 
     # Run the best model from the scratch
     if grid_search_active:
