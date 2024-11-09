@@ -50,6 +50,7 @@ from src.utils.checkpointer import Checkpointer
 from src.utils.eval import get_representations
 from src.utils.misc import make_contiguous, omegaconf_select
 from torch.utils import data
+from src.utils.checkpoint_modifier import CheckpointModifier
 
 try:
     from src.data.dali_dataloader import (
@@ -165,7 +166,12 @@ def train_ssl_model(cfg : DictConfig, grid_search_enabled: bool = False):
     if cfg.data.num_large_crops != 2:
         assert cfg.method in ["wmse", "mae"]
 
-    model = METHODS[cfg.method](cfg)
+    if cfg.load.enabled:
+        print(f"Loading model from {cfg.load.path}")
+        model = METHODS[cfg.method].load_from_checkpoint(cfg.load.path, strict=False, cfg=cfg)
+    else:
+        model = METHODS[cfg.method](cfg) 
+        
     make_contiguous(model)
     # can provide up to ~20% speed up
     if not cfg.performance.disable_channel_last:
@@ -253,18 +259,16 @@ def train_ssl_model(cfg : DictConfig, grid_search_enabled: bool = False):
             num_workers=cfg.data.num_workers,
         )
 
+    
     # 1.7 will deprecate resume_from_checkpoint, but for the moment
     # the argument is the same, but we need to pass it as ckpt_path to trainer.fit
     ckpt_path, wandb_run_id = None, None
     if cfg.auto_resume.enabled and cfg.resume_from_checkpoint is None:
-        if (cfg.checkpoint.filename is None or cfg.checkpoint.filename == "None"):
-            file = cfg.method
-        else:
-            file = cfg.checkpoint.filename
         auto_resumer = AutoResumer(
-            checkpoint_dir=os.path.join(cfg.checkpoint.dir, file),
+            checkpoint_dir=os.path.join(cfg.checkpoint.dir, cfg.method),
             max_hours=cfg.auto_resume.max_hours
         )
+        print("Finding a checkpoint to resume from...")
         resume_from_checkpoint, wandb_run_id = auto_resumer.find_checkpoint(cfg)
         if resume_from_checkpoint is not None:
             print(
@@ -272,11 +276,11 @@ def train_ssl_model(cfg : DictConfig, grid_search_enabled: bool = False):
                 f"'{resume_from_checkpoint}'",
             )
             ckpt_path = resume_from_checkpoint
+        else: print("No checkpoint found, training using the initial model.")
     elif cfg.resume_from_checkpoint is not None:
         ckpt_path = cfg.resume_from_checkpoint
         del cfg.resume_from_checkpoint
-
-
+   
     callbacks = []
 
     if cfg.checkpoint.enabled:
@@ -367,6 +371,13 @@ def main(cfg: DictConfig):
     # set_struct(..., False) disables this behavior and allows us to add more parameters
     # without making the user specify every single thing about the model
     OmegaConf.set_struct(cfg, False)
+    
+    if cfg.load.enabled:
+        cm = CheckpointModifier(cfg)
+        cfg.load.path = cm.duplicate_ckpt()
+        cm.reset_classifier(cfg.load.path)
+        cm.reset_projector(cfg.load.path)
+        cm.add_pytorch_lightning_version(cfg.load.path) # important for .pth to .ckpt conversion
 
     grid_search_active = omegaconf_select(cfg, "grid_search", None) and cfg.grid_search.enabled
     grid_hparams = None
