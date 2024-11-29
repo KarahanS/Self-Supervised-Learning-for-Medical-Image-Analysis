@@ -108,6 +108,7 @@ def initialize_backbone(cfg: DictConfig, supervised: bool = False):
     if not supervised: 
         backbone_model = BaseMethod._BACKBONES[cfg.backbone.name]  # initialize the architecture
         backbone = backbone_model(method=cfg.pretrain_method, **cfg.backbone.kwargs)
+        
         if cfg.backbone.name.startswith("resnet"):
             # remove fc layer
             backbone.fc = nn.Identity()
@@ -117,24 +118,22 @@ def initialize_backbone(cfg: DictConfig, supervised: bool = False):
                     3, 64, kernel_size=3, stride=1, padding=2, bias=False
                 )
                 backbone.maxpool = nn.Identity()
-
-            ckpt_path = cfg.pretrained_feature_extractor
-            assert (
+        ckpt_path = cfg.pretrained_feature_extractor
+        assert (
                 ckpt_path.endswith(".ckpt")
                 or ckpt_path.endswith(".pth")
                 or ckpt_path.endswith(".pt")
-            )
-            
-            state = torch.load(ckpt_path, map_location="cpu")["state_dict"]
-            for k in list(state.keys()):
-                if "encoder" in k:
-                    state[k.replace("encoder", "backbone")] = state[k]
-                    logging.warn(
-                        "You are using an older checkpoint. Use a new one as some issues might arise."
-                    )
-                if "backbone" in k:
-                    state[k.replace("backbone.", "")] = state[k]
-                del state[k]
+            ), "Pretrained model must be a .ckpt, .pth, or .pt file"
+        state = torch.load(ckpt_path, map_location="cpu")["state_dict"] 
+        for k in list(state.keys()):
+            if "encoder" in k:
+                state[k.replace("encoder", "backbone")] = state[k]
+                logging.warn(
+                    "You are using an older checkpoint. Use a new one as some issues might arise."
+                )
+            if "backbone" in k:
+                state[k.replace("backbone.", "")] = state[k]
+            del state[k]
         backbone.load_state_dict(state, strict=False)
         logging.info(f"Loaded {ckpt_path}")
     else: 
