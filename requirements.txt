@@ -142,6 +142,6 @@ umap==0.1.1
 urllib3==2.2.2
 wandb==0.16.6
 wcwidth==0.2.13
-Werkzeug==3.0.3
+Werkzeug==3.0.6
 wrapt==1.16.0
 yarl==1.9.4
