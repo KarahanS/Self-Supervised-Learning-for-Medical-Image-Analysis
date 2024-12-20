@@ -2,6 +2,7 @@
 
 OOD_MEDMNIST_PATH=scripts/ood/medmnist/
 MODEL_ROOT_DIR="/graphics/scratch2/students/kargibo/experiments"
+OOD_METHOD="softmax"
 METHOD_NAMES=("simclr" "byol" "dino" "ressl" "mocov3")
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 
@@ -24,15 +25,16 @@ for ID_DATASET in "${DATASETS[@]}"; do
                 DATASET_NAME=$(echo $model_file | cut -d'-' -f1 | cut -d'.' -f1)
                 METHOD_NAME=$(echo $model_file | cut -d'-' -f2)
                 ARCHITECTURE=$(echo $model_file | cut -d'-' -f3)
+
+                # If pretrained-False is in the model name, then it is not pretrained
+                if [[ $model_file == *"pretrained-False"* ]]; then
+                    PRETRAINED_STATUS="False"
+                else
+                    PRETRAINED_STATUS="True"
+                fi
                 
-            
                 # If dataset names does not match skip
                 if [[ $DATASET_NAME != $ID_DATASET ]]; then
-                    continue
-                fi
-
-                # If architecture has vit in it, skip
-                if [[ $ARCHITECTURE == *"vit"* ]]; then
                     continue
                 fi
 
@@ -52,6 +54,7 @@ for ID_DATASET in "${DATASETS[@]}"; do
                 python main_ood.py \
                     --config-path $OOD_MEDMNIST_PATH \
                     --config-name ${METHOD_NAME} \
+                    ood_cfg=${OOD_METHOD} \
                     pretrained_feature_extractor=${MODEL_ROOT_DIR}/${SSL_CHECKPOINT_NAME} \
                     pretrain_method=$METHOD_NAME \
                     data.dataset=$ID_DATASET \
@@ -59,8 +62,9 @@ for ID_DATASET in "${DATASETS[@]}"; do
                     backbone.name=$ARCHITECTURE \
                     backbone.kwargs.img_size=64 \
                     wandb.enabled=False \
-                    name="ood-${OOD_DATASET}-${METHOD_NAME}-${ARCHITECTURE}-${PRETRAINED}" \
-                    to_csv.name="last_mahob_ood_results.csv"
+                    name="ood-${METHOD_NAME}-${ARCHITECTURE}-${PRETRAINED}-${ID_DATASET}-${OOD_DATASET}" \
+                    to_csv.name="softmax_ood_oct20.csv"
+
             done
         done
     done

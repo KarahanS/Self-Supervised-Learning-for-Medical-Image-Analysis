@@ -3,6 +3,7 @@ defaults:
   - wandb: private.yaml
   - data: pathmnist.yaml
   - ood_data: pathmnist.yaml
+  - ood_cfg: mahalanobis.yaml
   - override hydra/hydra_logging: disabled
   - override hydra/job_logging: disabled
 
