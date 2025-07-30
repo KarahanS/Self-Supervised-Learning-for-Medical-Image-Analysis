@@ -1,14 +1,9 @@
-# Self-Supervised-Learning-for-Medical-Image-Analysis
+# Evaluating Self-Supervised Learning in Medical Imaging: A Systematic Investigation of Robustness, Generalizability, and Multi-Domain Impact (BMVC 2025)
 
-Self-Supervised Learning for Medical Image Analysis
+[![arXiv](https://img.shields.io/badge/arXiv-2501.15890-B31B1B.svg)](https://arxiv.org/abs/2412.19124)
 
+This repository contains code, data, and scripts for the paper:
 
-## About
-
-
-### Collaborators:
-- [Oğuz Ata Çal](https://github.com/OguzAtaCal)
-- [Bora Kargı](https://github.com/kargibora)
-- [Karahan Sarıtaş](https://github.com/KarahanS)
-- [Kıvanç Tezören](https://github.com/kivanctezoren)
-
+> **Evaluating Self-Supervised Learning in Medical Imaging: A Systematic Investigation of Robustness, Generalizability, and Multi-Domain Impact**  
+> Valay Bundele*, Karahan Sarıtaş*, Bora Kargi*, Oğuz Ata Çal*, Kıvanç Tezören*, Zohreh Ghaderi, Hendrik Lensch \
+> *arXiv preprint arXiv:2412.19124*
