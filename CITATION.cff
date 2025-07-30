@@ -1,0 +1,43 @@
+cff-version: 1.2.0
+message: "If you use our results/dataset/features/evaluation scripts, please cite the paper below."
+authors:
+  - family-names: "Bundele"
+    given-names: "Valay"
+  - family-names: "Sarıtaş"
+    given-names: "Karahan"
+  - family-names: "Kargi"
+    given-names: "Bora"
+  - family-names: "Çal"
+    given-names: "Oğuz Ata"
+  - family-names: "Tezören"
+    given-names: "Kıvanç"
+  - family-names: "Ghaderi"
+    given-names: "Zohreh"
+  - family-names: "Lensch"
+    given-names: "Hendrik"
+title: "Evaluating Self-Supervised Learning in Medical Imaging: A Benchmark for Robustness, Generalizability, and Multi-Domain Impact"
+date-released: 2024-12-29
+url: "https://arxiv.org/abs/2412.19124"
+preferred-citation:
+  type: article
+  authors:
+    - family-names: "Bundele"
+      given-names: "Valay"
+    - family-names: "Sarıtaş"
+      given-names: "Karahan"
+    - family-names: "Kargi"
+      given-names: "Bora"
+    - family-names: "Çal"
+      given-names: "Oğuz Ata"
+    - family-names: "Tezören"
+      given-names: "Kıvanç"
+    - family-names: "Ghaderi"
+      given-names: "Zohreh"
+    - family-names: "Lensch"
+      given-names: "Hendrik"
+  year: 2024
+  title: "Evaluating Self-Supervised Learning in Medical Imaging: A Benchmark for Robustness, Generalizability, and Multi-Domain Impact"
+  url: "https://arxiv.org/abs/2412.19124"
+  archivePrefix: "arXiv"
+  eprint: "2412.19124"
+  notes: "The first five authors contributed equally to this work."
