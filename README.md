@@ -5,5 +5,4 @@
 This repository contains code, data, and scripts for the paper:
 
 > **Evaluating Self-Supervised Learning in Medical Imaging: A Systematic Investigation of Robustness, Generalizability, and Multi-Domain Impact**  
-> Valay Bundele*, Karahan Sarıtaş*, Bora Kargi*, Oğuz Ata Çal*, Kıvanç Tezören*, Zohreh Ghaderi, Hendrik Lensch \
-> *arXiv preprint arXiv:2501.15890*
+> Valay Bundele*, Karahan Sarıtaş*, Bora Kargi*, Oğuz Ata Çal*, Kıvanç Tezören*, Zohreh Ghaderi, Hendrik Lensch \*
